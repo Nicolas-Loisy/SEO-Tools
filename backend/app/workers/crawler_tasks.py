@@ -68,6 +68,18 @@ def crawl_site(job_id: int) -> dict:
             "user_agent": "SEO-SaaS-Bot/1.0",
         }
 
+        # Add Playwright-specific config if using JS mode
+        if job.mode == "js":
+            crawler_config.update({
+                "headless": job.config.get("headless", True),
+                "capture_screenshot": job.config.get("capture_screenshot", False),
+                "screenshot_type": job.config.get("screenshot_type", "viewport"),
+                "viewport": job.config.get("viewport", {"width": 1920, "height": 1080}),
+                "wait_until": job.config.get("wait_until", "networkidle"),
+                "timeout": job.config.get("timeout", 30000),
+                "block_resources": job.config.get("block_resources", ["image", "font", "media"]),
+            })
+
         # Create crawler using Factory pattern
         crawler = CrawlerFactory.create(job.mode, crawler_config)
 

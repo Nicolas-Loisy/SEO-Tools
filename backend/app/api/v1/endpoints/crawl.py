@@ -38,10 +38,22 @@ async def start_crawl(
         )
 
     # Create crawl job
+    # Convert Pydantic model to dict if needed
+    config_dict = {}
+    if crawl_data.config:
+        if hasattr(crawl_data.config, "model_dump"):
+            # Pydantic v2
+            config_dict = crawl_data.config.model_dump(exclude_none=True)
+        elif hasattr(crawl_data.config, "dict"):
+            # Pydantic v1
+            config_dict = crawl_data.config.dict(exclude_none=True)
+        else:
+            config_dict = crawl_data.config
+
     crawl_job = CrawlJob(
         project_id=crawl_data.project_id,
         mode=crawl_data.mode,
-        config=crawl_data.config or {},
+        config=config_dict,
         status="pending",
     )
 
