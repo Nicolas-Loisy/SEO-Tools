@@ -27,12 +27,14 @@ export default function Dashboard() {
       ]);
 
       setQuota(quotaData);
-      setProjects(projectsData);
+      // Ensure projects is always an array
+      const projectsList = Array.isArray(projectsData) ? projectsData : [];
+      setProjects(projectsList);
 
       // Load recent crawls for first project
-      if (projectsData.length > 0) {
+      if (projectsList.length > 0) {
         try {
-          const crawls = await api.getProjectCrawls(projectsData[0].id);
+          const crawls = await api.getProjectCrawls(projectsList[0].id);
           setRecentCrawls(Array.isArray(crawls) ? crawls.slice(0, 5) : []);
         } catch (err) {
           setRecentCrawls([]);

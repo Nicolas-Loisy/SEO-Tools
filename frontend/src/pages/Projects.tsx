@@ -19,10 +19,12 @@ export default function Projects() {
     try {
       setError(null);
       const data = await api.getProjects();
-      setProjects(data);
+      // Ensure data is always an array
+      setProjects(Array.isArray(data) ? data : []);
     } catch (error: any) {
       console.error('Failed to load projects:', error);
       setError(error.response?.data?.detail || 'Failed to load projects');
+      setProjects([]); // Set empty array on error
     } finally {
       setIsLoading(false);
     }
