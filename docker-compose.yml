@@ -1,0 +1,166 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: ankane/pgvector:v0.5.1
+    container_name: seo-saas-postgres
+    environment:
+      POSTGRES_USER: seouser
+      POSTGRES_PASSWORD: seopassword
+      POSTGRES_DB: seosaas
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U seouser"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - seo-network
+
+  # Redis (Cache & Broker)
+  redis:
+    image: redis:7-alpine
+    container_name: seo-saas-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - seo-network
+
+  # Meilisearch (Search Engine)
+  meilisearch:
+    image: getmeili/meilisearch:v1.6
+    container_name: seo-saas-meilisearch
+    environment:
+      MEILI_MASTER_KEY: masterKey
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7700/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - seo-network
+
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: seo-saas-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - seo-network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seo-saas-backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://seouser:seopassword@postgres:5432/seosaas
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      MEILISEARCH_URL: http://meilisearch:7700
+      S3_ENDPOINT: http://minio:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    networks:
+      - seo-network
+    restart: unless-stopped
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seo-saas-celery-worker
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://seouser:seopassword@postgres:5432/seosaas
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+      MEILISEARCH_URL: http://meilisearch:7700
+      S3_ENDPOINT: http://minio:9000
+    depends_on:
+      - postgres
+      - redis
+      - backend
+    volumes:
+      - ./backend:/app
+    networks:
+      - seo-network
+    restart: unless-stopped
+
+  # Flower (Celery monitoring)
+  flower:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: seo-saas-flower
+    command: celery -A app.workers.celery_app flower --port=5555
+    env_file:
+      - ./backend/.env
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/2
+      CELERY_RESULT_BACKEND: redis://redis:6379/3
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - celery-worker
+    networks:
+      - seo-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+  meilisearch_data:
+  minio_data:
+
+networks:
+  seo-network:
+    driver: bridge
