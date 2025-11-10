@@ -9,7 +9,7 @@ from typing import List, Dict, Any
 from app.core.database import get_db
 from app.models.page import Page
 from app.models.tenant import Tenant
-from app.api.dependencies.auth import get_current_tenant
+from app.core.deps import get_current_tenant
 from app.services.content_generation import ContentGenerationService
 from app.core.config import settings
 

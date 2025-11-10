@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from app.core.database import get_db
 from app.models.tenant import Tenant
-from app.api.dependencies.auth import get_current_tenant
+from app.core.deps import get_current_tenant
 from app.services.rate_limit import get_rate_limiter, RateLimitService
 
 
