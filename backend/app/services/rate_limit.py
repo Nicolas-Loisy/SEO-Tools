@@ -2,6 +2,7 @@
 
 from datetime import datetime
 from typing import Optional, Tuple
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from redis.asyncio import Redis
@@ -9,6 +10,7 @@ from redis.asyncio import Redis
 from app.models.tenant import Tenant
 from app.models.usage import APIUsage, RateLimitLog
 from app.core.config import settings
+from app.core.database import get_db
 
 
 class RateLimitException(Exception):
@@ -284,7 +286,7 @@ class RateLimitService:
         return True
 
 
-async def get_rate_limiter(db: AsyncSession) -> RateLimitService:
+async def get_rate_limiter(db: AsyncSession = Depends(get_db)) -> RateLimitService:
     """
     Dependency to get rate limiter service.
 
