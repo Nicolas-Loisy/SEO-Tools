@@ -13,6 +13,8 @@ class APIClient {
       headers: {
         'Content-Type': 'application/json',
       },
+      // Follow redirects automatically
+      maxRedirects: 5,
     });
 
     // Load API key from localStorage
