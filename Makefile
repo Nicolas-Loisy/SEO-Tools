@@ -89,8 +89,15 @@ init: ## Initialize project (first time setup)
 	@echo ""
 	@echo "Next steps:"
 	@echo "  1. Edit backend/.env with your configuration"
-	@echo "  2. Run 'make migrate-up' to apply database migrations"
+	@echo "  2. Run 'make bootstrap' to create tables and generate API key"
 	@echo "  3. Visit http://localhost:8000/docs to see the API"
+
+bootstrap: ## Run bootstrap script (creates tables, tenant, API key)
+	@echo "🔧 Running bootstrap script..."
+	@docker-compose exec backend python scripts/bootstrap.py
+	@echo ""
+	@echo "✅ Bootstrap complete!"
+	@echo "Save the API key displayed above - it won't be shown again!"
 
 dev: ## Start development environment
 	docker-compose up backend celery-worker flower

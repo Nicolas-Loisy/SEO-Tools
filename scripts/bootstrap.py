@@ -17,7 +17,7 @@ import os
 # Add backend to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
@@ -35,6 +35,18 @@ def bootstrap():
     # Create database connection
     db_url = settings.DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://")
     engine = create_engine(db_url)
+
+    # Create pgvector extension
+    print("\n🔧 Enabling pgvector extension...")
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            conn.commit()
+        print("✓ pgvector extension enabled")
+    except Exception as e:
+        print(f"⚠️  Warning: Could not create pgvector extension: {e}")
+        print("   Make sure PostgreSQL has pgvector installed")
+        return 1
 
     # Create all tables
     print("\n📊 Creating database tables...")

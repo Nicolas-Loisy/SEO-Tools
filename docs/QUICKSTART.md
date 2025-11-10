@@ -36,6 +36,7 @@ docker-compose exec backend python scripts/bootstrap.py
 ```
 
 The bootstrap script will:
+- Enable pgvector extension for vector similarity search
 - Create database tables
 - Create default tenant
 - Generate your first API key
@@ -224,6 +225,27 @@ docker-compose up -d postgres
 sleep 10
 docker-compose up -d backend
 ```
+
+### "type 'vector' does not exist" error
+
+This error means the pgvector extension is not enabled in PostgreSQL. To fix:
+
+```bash
+# Option 1: Recreate database (easiest - loses data!)
+docker-compose down -v
+docker-compose up -d postgres
+sleep 10
+docker-compose exec backend python scripts/bootstrap.py
+
+# Option 2: Enable extension manually (preserves data)
+docker-compose exec postgres psql -U seouser -d seosaas -c "CREATE EXTENSION IF NOT EXISTS vector;"
+docker-compose restart backend
+
+# Option 3: Run bootstrap again (will enable extension)
+docker-compose exec backend python scripts/bootstrap.py
+```
+
+The init script (`database/init.sql`) automatically creates the pgvector extension on first startup. If you're using an existing database, you'll need to enable it manually.
 
 ### Worker not processing tasks
 
