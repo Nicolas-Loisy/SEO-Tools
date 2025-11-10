@@ -6,7 +6,7 @@ from typing import List, Optional
 import os
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_tenant
+from app.core.deps import get_current_tenant
 from app.models.tenant import Tenant
 from app.models.content import SiteTree
 from app.api.v1.schemas.site_tree import (

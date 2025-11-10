@@ -6,7 +6,7 @@ from sqlalchemy import select, func, delete
 from typing import Optional
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_tenant
+from app.core.deps import get_current_tenant
 from app.models.tenant import Tenant
 from app.models.webhook import Webhook, WebhookDelivery
 from app.api.v1.schemas.webhook import (
