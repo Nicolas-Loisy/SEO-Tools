@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { TrendingUp, Activity, FileText, Zap } from 'lucide-react';
+import { TrendingUp, Activity, FileText, Zap, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import type { Quota, UsageStats } from '@/types';
 
@@ -8,6 +8,7 @@ export default function Usage() {
   const [quota, setQuota] = useState<Quota | null>(null);
   const [history, setHistory] = useState<UsageStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -15,14 +16,16 @@ export default function Usage() {
 
   const loadData = async () => {
     try {
+      setError(null);
       const [quotaData, historyData] = await Promise.all([
         api.getQuota(),
         api.getUsageHistory(6),
       ]);
       setQuota(quotaData);
-      setHistory(historyData.history);
-    } catch (error) {
+      setHistory(historyData?.history || []);
+    } catch (error: any) {
       console.error('Failed to load usage data:', error);
+      setError(error.response?.data?.detail || 'Failed to load usage data');
     } finally {
       setIsLoading(false);
     }
@@ -30,15 +33,46 @@ export default function Usage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mb-4"></div>
+        <p className="text-gray-600 font-medium">Loading usage data...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load usage data</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button onClick={loadData} className="btn btn-primary">
+          Retry
+        </button>
       </div>
     );
   }
 
   if (!quota) return null;
 
-  const usagePercent = (quota.current_usage.total_api_calls / quota.max_api_calls_per_month) * 100;
+  // Safe access to quota data with fallbacks
+  const currentUsage = quota.current_usage || {
+    total_api_calls: 0,
+    crawl_jobs: 0,
+    pages_crawled: 0,
+    content_generations: 0,
+    analysis_requests: 0,
+  };
+
+  const remaining = quota.remaining || {
+    api_calls: 0,
+    projects: 0,
+    pages_per_crawl: 0,
+  };
+
+  const usagePercent = quota.max_api_calls_per_month > 0
+    ? (currentUsage.total_api_calls / quota.max_api_calls_per_month) * 100
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -81,7 +115,7 @@ export default function Usage() {
         <h2 className="text-xl font-bold text-gray-900 mb-4">API Usage This Month</h2>
         <div className="mb-2 flex items-center justify-between text-sm">
           <span className="text-gray-600">
-            {quota.current_usage.total_api_calls.toLocaleString()} of{' '}
+            {currentUsage.total_api_calls.toLocaleString()} of{' '}
             {quota.max_api_calls_per_month.toLocaleString()} calls
           </span>
           <span className="font-medium text-gray-900">{usagePercent.toFixed(1)}%</span>
@@ -112,7 +146,7 @@ export default function Usage() {
             <div>
               <p className="text-sm text-gray-600">Crawl Jobs</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
-                {quota.current_usage.crawl_jobs}
+                {currentUsage.crawl_jobs}
               </p>
             </div>
             <Activity className="w-10 h-10 text-blue-600" />
@@ -123,7 +157,7 @@ export default function Usage() {
             <div>
               <p className="text-sm text-gray-600">Pages Crawled</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
-                {quota.current_usage.pages_crawled}
+                {currentUsage.pages_crawled}
               </p>
             </div>
             <FileText className="w-10 h-10 text-green-600" />
@@ -134,7 +168,7 @@ export default function Usage() {
             <div>
               <p className="text-sm text-gray-600">Analysis Requests</p>
               <p className="text-3xl font-bold text-gray-900 mt-1">
-                {quota.current_usage.analysis_requests}
+                {currentUsage.analysis_requests}
               </p>
             </div>
             <TrendingUp className="w-10 h-10 text-purple-600" />
@@ -165,19 +199,19 @@ export default function Usage() {
           <div className="flex items-center justify-between">
             <span className="text-gray-700">API Calls</span>
             <span className="font-bold text-gray-900">
-              {quota.remaining.api_calls.toLocaleString()} remaining
+              {remaining.api_calls.toLocaleString()} remaining
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-700">Projects</span>
             <span className="font-bold text-gray-900">
-              {quota.remaining.projects} available
+              {remaining.projects} available
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-gray-700">Pages per Crawl</span>
             <span className="font-bold text-gray-900">
-              {quota.remaining.pages_per_crawl} maximum
+              {remaining.pages_per_crawl} maximum
             </span>
           </div>
         </div>

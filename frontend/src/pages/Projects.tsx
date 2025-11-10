@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Link } from 'react-router-dom';
-import { Plus, FolderKanban, Trash2, ExternalLink } from 'lucide-react';
+import { Plus, FolderKanban, Trash2, ExternalLink, Search, X, AlertCircle } from 'lucide-react';
 import type { Project } from '@/types';
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadProjects();
@@ -15,31 +17,39 @@ export default function Projects() {
 
   const loadProjects = async () => {
     try {
+      setError(null);
       const data = await api.getProjects();
       setProjects(data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load projects:', error);
+      setError(error.response?.data?.detail || 'Failed to load projects');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this project?')) return;
+  const handleDelete = async (id: number, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will permanently delete all associated data.`)) return;
 
     try {
       await api.deleteProject(id);
       setProjects(projects.filter(p => p.id !== id));
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to delete project:', error);
-      alert('Failed to delete project');
+      alert(error.response?.data?.detail || 'Failed to delete project');
     }
   };
 
+  const filteredProjects = projects.filter((project) =>
+    project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    project.domain.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mb-4"></div>
+        <p className="text-gray-600 font-medium">Loading projects...</p>
       </div>
     );
   }
@@ -62,40 +72,78 @@ export default function Projects() {
         </button>
       </div>
 
-      {projects.length === 0 ? (
-        <div className="card text-center py-12">
-          <FolderKanban className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
-          <p className="text-gray-600 mb-6">Get started by creating your first project</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn btn-primary"
-          >
-            Create Project
+      {/* Error Banner */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start">
+          <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 mr-3" />
+          <div className="flex-1">
+            <p className="font-medium text-red-900">Error</p>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+          <button onClick={() => setError(null)} className="text-red-600 hover:text-red-700">
+            <X className="w-5 h-5" />
           </button>
+        </div>
+      )}
+
+      {/* Search Bar */}
+      {projects.length > 0 && (
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search projects by name or domain..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="input pl-10 w-full max-w-md"
+          />
+        </div>
+      )}
+
+      {filteredProjects.length === 0 ? (
+        <div className="card text-center py-16 border-2 border-dashed">
+          <FolderKanban className="w-20 h-20 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-gray-900 mb-2">
+            {searchQuery ? 'No projects found' : 'No projects yet'}
+          </h3>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            {searchQuery
+              ? 'Try adjusting your search query'
+              : 'Get started by creating your first project to crawl and analyze your website'}
+          </p>
+          {!searchQuery && (
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn btn-primary inline-flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Project
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
-            <div key={project.id} className="card hover:shadow-md transition-shadow">
+          {filteredProjects.map((project) => (
+            <div key={project.id} className="card hover:shadow-lg transition-shadow">
               <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
                     {project.name}
                   </h3>
                   <a
                     href={project.domain}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm text-primary-600 hover:text-primary-700 flex items-center"
+                    className="text-sm text-primary-600 hover:text-primary-700 flex items-center truncate"
                   >
                     {project.domain}
-                    <ExternalLink className="w-3 h-3 ml-1" />
+                    <ExternalLink className="w-3 h-3 ml-1 flex-shrink-0" />
                   </a>
                 </div>
                 <button
-                  onClick={() => handleDelete(project.id)}
-                  className="text-gray-400 hover:text-red-600 transition-colors"
+                  onClick={() => handleDelete(project.id, project.name)}
+                  className="text-gray-400 hover:text-red-600 transition-colors flex-shrink-0 ml-2"
+                  title="Delete project"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
@@ -108,7 +156,7 @@ export default function Projects() {
                 </div>
                 <div className="flex justify-between">
                   <span>Max Pages:</span>
-                  <span className="font-medium">{project.max_pages}</span>
+                  <span className="font-medium">{project.max_pages.toLocaleString()}</span>
                 </div>
                 {project.last_crawl_at && (
                   <div className="flex justify-between">

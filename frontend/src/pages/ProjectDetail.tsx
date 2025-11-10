@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { Play, Clock, CheckCircle, XCircle, Loader } from 'lucide-react';
+import { Play, Clock, CheckCircle, XCircle, Loader, AlertCircle } from 'lucide-react';
 import type { Project, CrawlJob, Page } from '@/types';
 
 export default function ProjectDetail() {
@@ -10,6 +10,7 @@ export default function ProjectDetail() {
   const [crawls, setCrawls] = useState<CrawlJob[]>([]);
   const [pages, setPages] = useState<Page[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCrawlModal, setShowCrawlModal] = useState(false);
 
   useEffect(() => {
@@ -20,25 +21,51 @@ export default function ProjectDetail() {
 
   const loadProjectData = async (projectId: number) => {
     try {
+      setError(null);
       const [projectData, crawlsData, pagesData] = await Promise.all([
         api.getProject(projectId),
-        api.getProjectCrawls(projectId),
-        api.getPages(projectId, { limit: 20 }),
+        api.getProjectCrawls(projectId).catch(() => []),
+        api.getPages(projectId, { limit: 20 }).catch(() => []),
       ]);
       setProject(projectData);
-      setCrawls(crawlsData);
-      setPages(pagesData);
-    } catch (error) {
+      setCrawls(Array.isArray(crawlsData) ? crawlsData : []);
+      setPages(Array.isArray(pagesData) ? pagesData : []);
+    } catch (error: any) {
       console.error('Failed to load project data:', error);
+      setError(error.response?.data?.detail || 'Failed to load project data');
     } finally {
       setIsLoading(false);
     }
   };
 
-  if (isLoading || !project) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mb-4"></div>
+        <p className="text-gray-600 font-medium">Loading project...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load project</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button onClick={() => id && loadProjectData(parseInt(id))} className="btn btn-primary">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
+        <AlertCircle className="w-16 h-16 text-gray-400 mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Project not found</h2>
+        <p className="text-gray-600">This project does not exist or you don't have access to it.</p>
       </div>
     );
   }
