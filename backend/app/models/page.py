@@ -54,8 +54,8 @@ class Page(Base):
     # SEO Scores (computed)
     seo_score: Mapped[float] = mapped_column(default=0.0)
 
-    # Vector embedding for semantic similarity (768 dims for sentence-transformers)
-    embedding: Mapped[Vector] = mapped_column(Vector(768), nullable=True)
+    # Vector embedding for semantic similarity (384 dims for all-MiniLM-L6-v2)
+    embedding: Mapped[Vector] = mapped_column(Vector(384), nullable=True)
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="pages")
