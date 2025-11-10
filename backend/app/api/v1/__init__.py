@@ -1,7 +1,7 @@
 """API v1 router."""
 
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, projects, crawl, pages, analysis, usage, content, site_tree
+from app.api.v1.endpoints import auth, projects, crawl, pages, analysis, usage, content, site_tree, webhooks
 
 api_router = APIRouter()
 
@@ -14,3 +14,4 @@ api_router.include_router(analysis.router, prefix="/analysis", tags=["Analysis"]
 api_router.include_router(usage.router, prefix="/usage", tags=["Usage & Quotas"])
 api_router.include_router(content.router, prefix="/content", tags=["Content Generation"])
 api_router.include_router(site_tree.router, prefix="/site-trees", tags=["Site Architecture"])
+api_router.include_router(webhooks.router, prefix="/webhooks", tags=["Webhooks"])
