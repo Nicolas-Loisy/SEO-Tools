@@ -55,7 +55,8 @@ A comprehensive, multi-tenant SaaS platform for SEO professionals, providing web
 - **Workers**: Celery
 - **Storage**: MinIO (S3-compatible)
 - **Crawling**: Scrapy + Playwright
-- **Frontend**: React + Tailwind CSS (coming soon)
+- **Frontend**: React 18 + TypeScript + Tailwind CSS + Vite
+- **LLM Integration**: OpenAI, Anthropic, HuggingFace
 
 ### Design Patterns
 
@@ -105,11 +106,12 @@ make dev
 
 4. **Access the application**
 
-- API Documentation: http://localhost:8000/docs
-- Backend API: http://localhost:8000
-- Flower (Celery monitoring): http://localhost:5555
-- Meilisearch: http://localhost:7700
-- MinIO Console: http://localhost:9001
+- **Frontend Dashboard**: http://localhost:3000
+- **API Documentation**: http://localhost:8000/docs
+- **Backend API**: http://localhost:8000
+- **Flower** (Celery monitoring): http://localhost:5555
+- **Meilisearch**: http://localhost:7700
+- **MinIO Console**: http://localhost:9001
 
 ### Manual Setup
 
@@ -239,7 +241,14 @@ SEO-Tools/
 │   ├── migrations/          # Alembic migrations
 │   ├── Dockerfile
 │   └── requirements.txt
-├── frontend/                # React frontend (coming soon)
+├── frontend/                # React + TypeScript frontend
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── pages/           # Page components
+│   │   ├── lib/             # API client
+│   │   └── types/           # TypeScript types
+│   ├── Dockerfile
+│   └── package.json
 ├── docs/                    # Documentation
 ├── scripts/                 # Utility scripts
 ├── docker-compose.yml
@@ -293,31 +302,38 @@ Once the backend is running, visit:
 
 ## Roadmap
 
-### MVP (Current Phase)
+### Completed Features
 - [x] Project structure and scaffold
-- [x] Database models and migrations
-- [x] Basic API endpoints (Projects, Crawl, Pages)
-- [x] Docker Compose setup
-- [x] Celery workers foundation
-- [ ] Fast crawler implementation (Scrapy)
-- [ ] Repository pattern implementation
-- [ ] Basic authentication
+- [x] Database models and migrations (PostgreSQL + pgvector)
+- [x] API endpoints (Projects, Crawl, Pages, Usage, Content)
+- [x] Docker Compose setup (Backend, Frontend, Celery, Redis, Postgres, Meilisearch, MinIO)
+- [x] Celery workers for async tasks
+- [x] Fast crawler (aiohttp-based)
+- [x] JavaScript-enabled crawler (Playwright)
+- [x] Repository pattern implementation
+- [x] API key authentication
+- [x] Rate limiting and quota management
+- [x] Internal linking graph computation
+- [x] Semantic similarity with embeddings (sentence-transformers)
+- [x] Content generation (LLM integration: OpenAI, Anthropic, HuggingFace)
+- [x] Frontend dashboard (React + TypeScript)
+- [x] Multilingual support (French/English)
+- [x] Comprehensive test suite (pytest)
 
-### V2
-- [ ] JavaScript-enabled crawler (Playwright)
-- [ ] Internal linking graph computation
-- [ ] Semantic similarity (embeddings)
-- [ ] Site architecture generator
-- [ ] Content generation (LLM integration)
-- [ ] Frontend dashboard
+### In Progress
+- [ ] SERP analysis and competitor tracking
+- [ ] Site tree/architecture generator with export
+- [ ] Advanced Schema.org validation
+- [ ] Webhook notifications system
+- [ ] End-to-end testing
 
-### V3
-- [ ] Competitor SERP analysis
-- [ ] Schema.org/JSON-LD generator
-- [ ] Advanced analytics
-- [ ] Multi-tenant billing
-- [ ] API rate limiting
-- [ ] Webhook notifications
+### Future Enhancements
+- [ ] Advanced analytics and reporting
+- [ ] Multi-tenant billing integration
+- [ ] Keyword research tools
+- [ ] Backlink analysis
+- [ ] Performance monitoring
+- [ ] Mobile SEO analysis
 
 ## Contributing
 
