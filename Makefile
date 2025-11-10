@@ -94,7 +94,7 @@ init: ## Initialize project (first time setup)
 
 bootstrap: ## Run bootstrap script (creates tables, tenant, API key)
 	@echo "🔧 Running bootstrap script..."
-	@docker-compose exec backend python scripts/bootstrap.py
+	@docker-compose exec backend python /app/scripts/bootstrap.py
 	@echo ""
 	@echo "✅ Bootstrap complete!"
 	@echo "Save the API key displayed above - it won't be shown again!"
