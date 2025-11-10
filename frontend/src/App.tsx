@@ -1,12 +1,12 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import Layout from '@/components/Layout';
-import Dashboard from '@/pages/Dashboard';
-import Projects from '@/pages/Projects';
-import ProjectDetail from '@/pages/ProjectDetail';
-import Login from '@/pages/Login';
-import Usage from '@/pages/Usage';
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import Layout from "@/components/Layout";
+import Dashboard from "@/pages/Dashboard";
+import Projects from "@/pages/Projects";
+import ProjectDetail from "@/pages/ProjectDetail";
+import Login from "@/pages/Login";
+import Usage from "@/pages/Usage";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);

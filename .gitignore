@@ -88,3 +88,4 @@ temp/
 # MinIO data
 .minio/
 minio-data/
+my_key
