@@ -1,4 +1,4 @@
-"""Fast crawler using requests and BeautifulSoup."""
+"""Fast crawler using requests and BeautifulSoup with language detection."""
 
 import asyncio
 import hashlib
@@ -10,6 +10,7 @@ from bs4 import BeautifulSoup
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from app.services.crawler.base import BaseCrawler, CrawledPage, CrawlResult, CrawlerException
+from app.services.nlp.language import detect_language
 
 
 class FastCrawler(BaseCrawler):
@@ -197,9 +198,18 @@ class FastCrawler(BaseCrawler):
         text_content = soup.get_text(separator=" ", strip=True)
         word_count = len(text_content.split())
 
-        # Extract lang
+        # Extract lang from HTML attribute
         html_tag = soup.find("html")
-        lang = html_tag.get("lang") if html_tag else None
+        lang_from_html = html_tag.get("lang") if html_tag else None
+
+        # Auto-detect language from content if not specified or too generic
+        if not lang_from_html or len(lang_from_html) > 5:
+            # HTML lang attribute is missing or too generic (e.g., "en-US" → use "en")
+            detected = detect_language(text_content)
+            lang = detected if detected else lang_from_html
+        else:
+            # Clean HTML lang (e.g., "en-US" → "en")
+            lang = lang_from_html.split("-")[0] if lang_from_html else None
 
         # Extract canonical
         canonical_tag = soup.find("link", attrs={"rel": "canonical"})

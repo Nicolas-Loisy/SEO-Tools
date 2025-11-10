@@ -1,4 +1,4 @@
-"""Semantic embeddings service using sentence-transformers."""
+"""Semantic embeddings service with multilingual support."""
 
 from typing import List
 import numpy as np
@@ -10,21 +10,47 @@ class EmbeddingService:
     Service for generating semantic embeddings from text.
 
     Uses sentence-transformers to create vector representations for
-    semantic similarity search.
+    semantic similarity search. Supports multiple languages.
     """
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
+    # Available models with their configurations
+    MODELS = {
+        "multilingual": {
+            "name": "paraphrase-multilingual-MiniLM-L12-v2",
+            "dimensions": 384,
+            "languages": ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja"],
+            "description": "Fast multilingual model supporting 50+ languages",
+        },
+        "english": {
+            "name": "all-MiniLM-L6-v2",
+            "dimensions": 384,
+            "languages": ["en"],
+            "description": "Fast English-only model",
+        },
+        "multilingual-large": {
+            "name": "paraphrase-multilingual-mpnet-base-v2",
+            "dimensions": 768,
+            "languages": ["en", "fr", "de", "es", "it", "pt", "nl", "pl", "ru", "zh", "ja"],
+            "description": "Best quality multilingual model (slower)",
+        },
+    }
+
+    def __init__(self, model_key: str = "multilingual"):
         """
         Initialize embedding service.
 
         Args:
-            model_name: Sentence-transformers model to use
-                       Default: all-MiniLM-L6-v2 (384 dims, fast, good quality)
-                       Alternative: all-mpnet-base-v2 (768 dims, slower, best quality)
+            model_key: Model key from MODELS dict
+                      Default: "multilingual" (French + English + 50+ languages)
         """
-        self.model_name = model_name
+        if model_key not in self.MODELS:
+            raise ValueError(f"Unknown model: {model_key}. Available: {list(self.MODELS.keys())}")
+
+        self.model_config = self.MODELS[model_key]
+        self.model_name = self.model_config["name"]
+        self.dimensions = self.model_config["dimensions"]
+        self.supported_languages = self.model_config["languages"]
         self._model: SentenceTransformer | None = None
-        self.dimensions = 384 if "MiniLM" in model_name else 768
 
     @property
     def model(self) -> SentenceTransformer:
@@ -38,12 +64,13 @@ class EmbeddingService:
             self._model = SentenceTransformer(self.model_name)
         return self._model
 
-    def generate_embedding(self, text: str) -> List[float]:
+    def generate_embedding(self, text: str, language: str = None) -> List[float]:
         """
         Generate embedding for a single text.
 
         Args:
             text: Input text
+            language: Optional language hint (e.g., "en", "fr")
 
         Returns:
             Embedding vector as list of floats
@@ -51,6 +78,10 @@ class EmbeddingService:
         if not text or not text.strip():
             # Return zero vector for empty text
             return [0.0] * self.dimensions
+
+        # Warn if language not supported (but still process)
+        if language and language not in self.supported_languages and "multilingual" not in self.model_name:
+            print(f"Warning: Language '{language}' may not be well supported by {self.model_name}")
 
         # Truncate very long texts (model limit is usually 512 tokens)
         max_chars = 10000
@@ -65,12 +96,15 @@ class EmbeddingService:
 
         return embedding.tolist()
 
-    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+    def generate_embeddings(
+        self, texts: List[str], languages: List[str] = None
+    ) -> List[List[float]]:
         """
         Generate embeddings for multiple texts (batched for efficiency).
 
         Args:
             texts: List of input texts
+            languages: Optional list of language hints (same length as texts)
 
         Returns:
             List of embedding vectors
@@ -149,23 +183,26 @@ class EmbeddingService:
         return [(int(idx), float(similarities[idx])) for idx in top_indices]
 
 
-# Global instance
-_embedding_service: EmbeddingService | None = None
+# Global instances for different configurations
+_embedding_services = {}
 
 
-def get_embedding_service(model_name: str = "all-MiniLM-L6-v2") -> EmbeddingService:
+def get_embedding_service(model_key: str = "multilingual") -> EmbeddingService:
     """
-    Get global embedding service instance (singleton).
+    Get embedding service instance (singleton per model).
 
     Args:
-        model_name: Model to use
+        model_key: Model configuration key
+                  "multilingual" - French + English + 50+ languages (default)
+                  "english" - English only (slightly faster)
+                  "multilingual-large" - Best quality (slower)
 
     Returns:
         EmbeddingService instance
     """
-    global _embedding_service
+    global _embedding_services
 
-    if _embedding_service is None:
-        _embedding_service = EmbeddingService(model_name)
+    if model_key not in _embedding_services:
+        _embedding_services[model_key] = EmbeddingService(model_key)
 
-    return _embedding_service
+    return _embedding_services[model_key]

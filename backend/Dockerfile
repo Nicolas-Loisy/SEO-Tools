@@ -47,9 +47,6 @@ RUN pip install --upgrade pip && \
 # Install Playwright browsers
 RUN playwright install chromium
 
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
-
 # Copy application code
 COPY . .
 

@@ -37,7 +37,7 @@ meilisearch==0.31.0
 sentence-transformers==2.3.1
 scikit-learn==1.4.0
 numpy==1.26.3
-spacy==3.7.2
+langdetect==1.0.9
 
 # LLM Adapters
 openai==1.10.0
