@@ -49,11 +49,12 @@ async def start_crawl(
     await db.commit()
     await db.refresh(crawl_job)
 
-    # TODO: Enqueue Celery task here
-    # from app.workers.crawler import crawl_task
-    # task = crawl_task.delay(crawl_job.id)
-    # crawl_job.celery_task_id = task.id
-    # await db.commit()
+    # Enqueue Celery task
+    from app.workers.crawler_tasks import crawl_site
+
+    task = crawl_site.delay(crawl_job.id)
+    crawl_job.celery_task_id = task.id
+    await db.commit()
 
     return crawl_job
 
