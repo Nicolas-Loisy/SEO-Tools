@@ -16,8 +16,9 @@ class SiteTree(Base):
     __tablename__ = "site_trees"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     project_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
+        Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=True, index=True
     )
 
     # Tree metadata
