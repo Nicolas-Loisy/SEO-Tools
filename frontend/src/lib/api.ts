@@ -234,6 +234,85 @@ class APIClient {
     const { data } = await this.client.get('/search/stats');
     return data;
   }
+
+  // Internal Linking Analysis
+  async getLinkRecommendations(
+    projectId: number,
+    pageId?: number,
+    limit: number = 20
+  ): Promise<{
+    project_id: number;
+    page_id?: number;
+    recommendations: Array<{
+      source_page_id?: number;
+      source_url?: string;
+      target_page_id: number;
+      target_url: string;
+      target_title: string;
+      keyword: string;
+      context: string;
+      score: number;
+      reason: string;
+    }>;
+    count: number;
+  }> {
+    const params: any = { limit };
+    if (pageId) params.page_id = pageId;
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-recommendations`, { params });
+    return data;
+  }
+
+  async getLinkGraphAnalysis(projectId: number): Promise<{
+    project_id: number;
+    total_pages: number;
+    total_links: number;
+    avg_links_per_page: number;
+    orphan_pages: number;
+    hub_pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      seo_score: number;
+      pagerank: number;
+      in_degree: number;
+      out_degree: number;
+    }>;
+    authority_pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      seo_score: number;
+      pagerank: number;
+      in_degree: number;
+      out_degree: number;
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-graph`);
+    return data;
+  }
+
+  async exportLinkGraph(projectId: number): Promise<{
+    project_id: number;
+    graph: {
+      nodes: Array<{
+        id: number;
+        label: string;
+        url: string;
+        seo_score: number;
+        depth: number;
+        pagerank: number;
+        in_degree: number;
+        out_degree: number;
+      }>;
+      edges: Array<{
+        source: number;
+        target: number;
+      }>;
+    };
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-graph/export`);
+    return data;
+  }
 }
 
 export const api = new APIClient();
