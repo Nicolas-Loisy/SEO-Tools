@@ -314,20 +314,33 @@ export default function Search() {
                       />
                     )}
 
+                    {/* H1 (highlighted) if different from title */}
+                    {result._formatted?.h1 && result.h1 !== result.title && (
+                      <div className="mb-2">
+                        <span className="text-xs font-semibold text-gray-500 mr-2">H1:</span>
+                        <span
+                          className="text-sm text-gray-700"
+                          dangerouslySetInnerHTML={highlightText(result._formatted.h1)}
+                        />
+                      </div>
+                    )}
+
                     {/* Meta Description (highlighted) */}
                     {result._formatted?.meta_description && (
                       <p
-                        className="text-sm text-gray-600 mb-3 line-clamp-2"
+                        className="text-sm text-gray-600 mb-3"
                         dangerouslySetInnerHTML={highlightText(result._formatted.meta_description)}
                       />
                     )}
 
                     {/* Content Snippet (highlighted) */}
                     {result._formatted?.text_content && (
-                      <p
-                        className="text-sm text-gray-500 line-clamp-2"
-                        dangerouslySetInnerHTML={highlightText(result._formatted.text_content)}
-                      />
+                      <div className="mt-2">
+                        <p
+                          className="text-sm text-gray-500 leading-relaxed"
+                          dangerouslySetInnerHTML={highlightText(result._formatted.text_content)}
+                        />
+                      </div>
                     )}
 
                     {/* Metadata */}

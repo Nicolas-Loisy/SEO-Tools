@@ -156,8 +156,22 @@ class PlaywrightCrawler(BaseCrawler):
 
             status_code = response.status if response else 0
 
-            # Wait a bit for dynamic content
-            await page.wait_for_timeout(1000)
+            # Wait for dynamic content to render (increased for JS frameworks)
+            await page.wait_for_timeout(3000)  # 3 seconds for React/Vue/etc
+
+            # Additional wait: ensure body has actual content (not just "enable JS" message)
+            try:
+                # Wait for body to have meaningful content
+                await page.wait_for_function(
+                    """() => {
+                        const body = document.body;
+                        return body && body.innerText && body.innerText.length > 100;
+                    }""",
+                    timeout=5000  # 5 seconds max
+                )
+            except Exception:
+                # If timeout, continue anyway (some pages might be legitimately small)
+                pass
 
             # Get rendered HTML
             html = await page.content()
