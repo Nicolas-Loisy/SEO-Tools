@@ -441,3 +441,266 @@ async def export_link_graph_visualization(
         }
     finally:
         sync_db.close()
+
+
+@router.get("/projects/{project_id}/pages/{page_id}/schema/detect")
+async def detect_schema_types(
+    project_id: int,
+    page_id: int,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Detect appropriate schema types for a page.
+
+    Analyzes page content and suggests suitable Schema.org types.
+
+    Args:
+        project_id: Project ID
+        page_id: Page ID
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        List of detected schema types with priorities
+    """
+    from app.repositories.page import PageRepository
+    from app.services.schema_detector import schema_detector
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Get page
+    page_repo = PageRepository(db)
+    page = await page_repo.get_by_id(page_id)
+
+    if not page or page.project_id != project_id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Page not found",
+        )
+
+    # Detect schema types
+    detected_types = schema_detector.detect_schema_type(
+        url=page.url,
+        title=page.title or "",
+        content=page.text_content or "",
+        meta_description=page.meta_description,
+        h1=page.h1
+    )
+
+    return {
+        "page_id": page_id,
+        "url": page.url,
+        "detected_types": [
+            {
+                "type": schema_type.value,
+                "priority": schema_detector.get_schema_priority(schema_type)
+            }
+            for schema_type in detected_types
+        ]
+    }
+
+
+@router.post("/projects/{project_id}/pages/{page_id}/schema/generate")
+async def generate_jsonld_schema(
+    project_id: int,
+    page_id: int,
+    schema_type: str,
+    additional_data: Optional[Dict[str, Any]] = None,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Generate JSON-LD schema for a page.
+
+    Args:
+        project_id: Project ID
+        page_id: Page ID
+        schema_type: Schema.org type (e.g., "Article", "Product")
+        additional_data: Optional additional data for schema generation
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        Generated JSON-LD schema
+    """
+    from app.repositories.page import PageRepository
+    from app.services.jsonld_generator import jsonld_generator
+    from app.services.schema_detector import SchemaType
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Get page - use sync session for page data
+    from app.core.database import SessionLocal
+    sync_db = SessionLocal()
+
+    try:
+        # Get page using sync query
+        from app.models.page import Page
+        page = sync_db.query(Page).filter(
+            Page.id == page_id,
+            Page.project_id == project_id
+        ).first()
+
+        if not page:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Page not found",
+            )
+
+        # Validate schema type
+        try:
+            schema_type_enum = SchemaType(schema_type)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid schema type: {schema_type}",
+            )
+
+        # Generate schema
+        schema = jsonld_generator.generate_schema(
+            page=page,
+            schema_type=schema_type_enum,
+            additional_data=additional_data
+        )
+
+        # Validate schema
+        validation_result = jsonld_generator.validate_schema(schema)
+
+        # Format for HTML
+        html_output = jsonld_generator.format_for_html(schema)
+
+        return {
+            "page_id": page_id,
+            "schema_type": schema_type,
+            "schema": schema,
+            "html": html_output,
+            "validation": validation_result
+        }
+    finally:
+        sync_db.close()
+
+
+@router.post("/projects/{project_id}/pages/{page_id}/schema/validate")
+async def validate_jsonld_schema(
+    project_id: int,
+    page_id: int,
+    schema: Dict[str, Any],
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Validate a JSON-LD schema.
+
+    Args:
+        project_id: Project ID
+        page_id: Page ID
+        schema: JSON-LD schema to validate
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        Validation result
+    """
+    from app.services.jsonld_generator import jsonld_generator
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Validate schema
+    validation_result = jsonld_generator.validate_schema(schema)
+
+    return {
+        "page_id": page_id,
+        "validation": validation_result
+    }
+
+
+@router.get("/projects/{project_id}/schema/bulk-detect")
+async def bulk_detect_schemas(
+    project_id: int,
+    limit: int = 50,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Detect schema types for all pages in a project.
+
+    Args:
+        project_id: Project ID
+        limit: Maximum number of pages to analyze
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        Schema detection results for all pages
+    """
+    from app.repositories.page import PageRepository
+    from app.services.schema_detector import schema_detector
+    from sqlalchemy import select
+    from app.models.page import Page
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Get pages
+    result = await db.execute(
+        select(Page)
+        .filter(Page.project_id == project_id)
+        .limit(limit)
+    )
+    pages = result.scalars().all()
+
+    # Detect schemas for each page
+    results = []
+    for page in pages:
+        detected_types = schema_detector.detect_schema_type(
+            url=page.url,
+            title=page.title or "",
+            content=page.text_content or "",
+            meta_description=page.meta_description,
+            h1=page.h1
+        )
+
+        results.append({
+            "page_id": page.id,
+            "url": page.url,
+            "title": page.title,
+            "detected_types": [schema_type.value for schema_type in detected_types[:2]]
+        })
+
+    return {
+        "project_id": project_id,
+        "total_pages": len(results),
+        "pages": results
+    }
