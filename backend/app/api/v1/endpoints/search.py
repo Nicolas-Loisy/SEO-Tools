@@ -1,8 +1,12 @@
 """Search endpoints for full-text search."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from app.services.meilisearch_service import meilisearch_service
+from app.core.database import get_db
+from app.models.page import Page
 
 router = APIRouter()
 
@@ -62,3 +66,69 @@ async def search_pages(
         "offset": offset,
         "processing_time_ms": results.get("processingTimeMs", 0),
     }
+
+
+@router.post("/reindex")
+async def reindex_all_pages(db: AsyncSession = Depends(get_db)):
+    """
+    Reindex all pages from the database to Meilisearch.
+
+    This endpoint is useful when you need to rebuild the search index
+    from scratch or after database changes.
+
+    Returns:
+        Status of the reindexing operation
+    """
+    try:
+        # Get all pages from database
+        result = await db.execute(select(Page))
+        pages = result.scalars().all()
+
+        if not pages:
+            return {
+                "success": True,
+                "message": "No pages found in database",
+                "indexed_count": 0,
+            }
+
+        # Format pages for Meilisearch
+        documents = []
+        for page in pages:
+            documents.append({
+                "id": page.id,
+                "project_id": page.project_id,
+                "crawl_job_id": page.crawl_job_id,
+                "url": page.url,
+                "title": page.title or "",
+                "meta_description": page.meta_description or "",
+                "h1": page.h1 or "",
+                "text_content": page.text_content or "",
+                "status_code": page.status_code,
+                "word_count": page.word_count,
+                "seo_score": page.seo_score,
+                "depth": page.depth,
+                "internal_links_count": page.internal_links_count,
+                "external_links_count": page.external_links_count,
+            })
+
+        # Index in batches of 1000
+        batch_size = 1000
+        indexed_count = 0
+
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i:i + batch_size]
+            meilisearch_service.index_pages_bulk(batch)
+            indexed_count += len(batch)
+
+        return {
+            "success": True,
+            "message": f"Successfully reindexed {indexed_count} pages",
+            "indexed_count": indexed_count,
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Error during reindexing: {str(e)}",
+            "indexed_count": 0,
+        }

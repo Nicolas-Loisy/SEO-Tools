@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { Search as SearchIcon, Filter, ExternalLink, X } from 'lucide-react';
+import { Search as SearchIcon, Filter, ExternalLink, X, RefreshCw } from 'lucide-react';
 
 export default function Search() {
   const [query, setQuery] = useState('');
@@ -9,6 +9,8 @@ export default function Search() {
   const [isLoading, setIsLoading] = useState(false);
   const [processingTime, setProcessingTime] = useState(0);
   const [showFilters, setShowFilters] = useState(false);
+  const [isReindexing, setIsReindexing] = useState(false);
+  const [reindexMessage, setReindexMessage] = useState<string>('');
 
   // Filters
   const [statusCode, setStatusCode] = useState<string>('');
@@ -47,6 +49,21 @@ export default function Search() {
     setMinWordCount('');
   };
 
+  const handleReindex = async () => {
+    setIsReindexing(true);
+    setReindexMessage('');
+    try {
+      const result = await api.reindexPages();
+      setReindexMessage(result.message);
+      setTimeout(() => setReindexMessage(''), 5000);
+    } catch (error: any) {
+      setReindexMessage('Error during reindexing: ' + (error.message || 'Unknown error'));
+      setTimeout(() => setReindexMessage(''), 5000);
+    } finally {
+      setIsReindexing(false);
+    }
+  };
+
   const getSEOScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-600 bg-green-50';
     if (score >= 70) return 'text-blue-600 bg-blue-50';
@@ -63,12 +80,34 @@ export default function Search() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Search Pages</h1>
-        <p className="text-gray-600 mt-1">
-          Search through all crawled pages with full-text search
-        </p>
+      <div className="flex justify-between items-start">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Search Pages</h1>
+          <p className="text-gray-600 mt-1">
+            Search through all crawled pages with full-text search
+          </p>
+        </div>
+        <button
+          onClick={handleReindex}
+          disabled={isReindexing}
+          className="btn btn-secondary flex items-center gap-2"
+          title="Reindex all pages in Meilisearch"
+        >
+          <RefreshCw className={`w-4 h-4 ${isReindexing ? 'animate-spin' : ''}`} />
+          {isReindexing ? 'Reindexing...' : 'Reindex Pages'}
+        </button>
       </div>
+
+      {/* Reindex Message */}
+      {reindexMessage && (
+        <div className={`p-4 rounded-lg ${
+          reindexMessage.includes('Error') || reindexMessage.includes('error')
+            ? 'bg-red-50 text-red-800 border border-red-200'
+            : 'bg-green-50 text-green-800 border border-green-200'
+        }`}>
+          {reindexMessage}
+        </div>
+      )}
 
       {/* Search Form */}
       <div className="card">

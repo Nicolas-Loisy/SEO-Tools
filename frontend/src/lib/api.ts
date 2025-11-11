@@ -213,6 +213,15 @@ class APIClient {
     const { data } = await this.client.get('/search/', { params });
     return data;
   }
+
+  async reindexPages(): Promise<{
+    success: boolean;
+    message: string;
+    indexed_count: number;
+  }> {
+    const { data } = await this.client.post('/search/reindex');
+    return data;
+  }
 }
 
 export const api = new APIClient();
