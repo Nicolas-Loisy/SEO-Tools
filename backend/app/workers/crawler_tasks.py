@@ -155,6 +155,40 @@ def crawl_site(job_id: int) -> dict:
 
         db.commit()
 
+        # Index pages to Meilisearch for full-text search
+        try:
+            from app.services.meilisearch_service import meilisearch_service
+
+            # Get all pages for this crawl job to index
+            pages_to_index = db.query(Page).filter(Page.crawl_job_id == job.id).all()
+
+            # Format pages for Meilisearch
+            documents = []
+            for page in pages_to_index:
+                documents.append({
+                    "id": page.id,
+                    "project_id": page.project_id,
+                    "crawl_job_id": page.crawl_job_id,
+                    "url": page.url,
+                    "title": page.title or "",
+                    "meta_description": page.meta_description or "",
+                    "h1": page.h1 or "",
+                    "text_content": page.text_content or "",
+                    "status_code": page.status_code,
+                    "word_count": page.word_count,
+                    "seo_score": page.seo_score,
+                    "depth": page.depth,
+                    "internal_links_count": page.internal_links_count,
+                    "external_links_count": page.external_links_count,
+                })
+
+            # Index documents in bulk
+            if documents:
+                meilisearch_service.index_pages_bulk(documents)
+        except Exception as e:
+            # Log error but don't fail the crawl
+            print(f"Warning: Failed to index pages to Meilisearch: {e}")
+
         # Update job with results
         job.status = "completed"
         job.finished_at = datetime.utcnow()

@@ -191,6 +191,28 @@ class APIClient {
     });
     return data;
   }
+
+  // Search
+  async searchPages(params: {
+    q: string;
+    project_id?: number;
+    status_code?: number;
+    min_seo_score?: number;
+    max_seo_score?: number;
+    min_word_count?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<{
+    query: string;
+    hits: any[];
+    total: number;
+    limit: number;
+    offset: number;
+    processing_time_ms: number;
+  }> {
+    const { data } = await this.client.get('/search/', { params });
+    return data;
+  }
 }
 
 export const api = new APIClient();

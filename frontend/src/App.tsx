@@ -8,6 +8,7 @@ import ProjectDetail from "@/pages/ProjectDetail";
 import CrawlDetails from "@/pages/CrawlDetails";
 import Login from "@/pages/Login";
 import Usage from "@/pages/Usage";
+import Search from "@/pages/Search";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -41,6 +42,7 @@ function App() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/crawls/:crawlId" element={<CrawlDetails />} />
+        <Route path="/search" element={<Search />} />
         <Route path="/usage" element={<Usage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
