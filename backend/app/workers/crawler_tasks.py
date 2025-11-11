@@ -93,6 +93,10 @@ def crawl_site(job_id: int) -> dict:
         from app.services.seo_analyzer import seo_analyzer
         total_links = 0
         for crawled_page in crawl_result.pages:
+            # Count links (outgoing_links only contains internal links from the crawler)
+            internal_links_count = len(crawled_page.outgoing_links)
+            external_links_count = 0  # Not currently tracked by crawler
+
             # Calculate SEO score
             seo_score, _ = seo_analyzer.analyze_page(
                 url=crawled_page.url,
@@ -101,7 +105,7 @@ def crawl_site(job_id: int) -> dict:
                 h1=crawled_page.h1,
                 word_count=crawled_page.word_count,
                 status_code=crawled_page.status_code,
-                internal_links_count=len([link for link in crawled_page.outgoing_links if link.is_internal]),
+                internal_links_count=internal_links_count,
             )
 
             # Create Page object
@@ -120,8 +124,8 @@ def crawl_site(job_id: int) -> dict:
                 rendered_html=crawled_page.rendered_html,
                 content_hash=crawled_page.content_hash,
                 word_count=crawled_page.word_count,
-                internal_links_count=len([link for link in crawled_page.outgoing_links if link.is_internal]),
-                external_links_count=len([link for link in crawled_page.outgoing_links if not link.is_internal]),
+                internal_links_count=internal_links_count,
+                external_links_count=external_links_count,
                 lang=crawled_page.lang,
                 canonical_url=crawled_page.canonical_url,
                 depth=crawled_page.depth,
