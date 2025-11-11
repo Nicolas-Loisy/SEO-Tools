@@ -90,11 +90,24 @@ def crawl_site(job_id: int) -> dict:
         loop.close()
 
         # Save pages to database
+        from app.services.seo_analyzer import seo_analyzer
         total_links = 0
         for crawled_page in crawl_result.pages:
+            # Calculate SEO score
+            seo_score, _ = seo_analyzer.analyze_page(
+                url=crawled_page.url,
+                title=crawled_page.title,
+                meta_description=crawled_page.meta_description,
+                h1=crawled_page.h1,
+                word_count=crawled_page.word_count,
+                status_code=crawled_page.status_code,
+                internal_links_count=len([link for link in crawled_page.outgoing_links if link.is_internal]),
+            )
+
             # Create Page object
             page = Page(
                 project_id=project.id,
+                crawl_job_id=job.id,
                 url=crawled_page.url,
                 url_hash=crawled_page.url_hash,
                 status_code=crawled_page.status_code,
@@ -107,9 +120,12 @@ def crawl_site(job_id: int) -> dict:
                 rendered_html=crawled_page.rendered_html,
                 content_hash=crawled_page.content_hash,
                 word_count=crawled_page.word_count,
+                internal_links_count=len([link for link in crawled_page.outgoing_links if link.is_internal]),
+                external_links_count=len([link for link in crawled_page.outgoing_links if not link.is_internal]),
                 lang=crawled_page.lang,
                 canonical_url=crawled_page.canonical_url,
                 depth=crawled_page.depth,
+                seo_score=seo_score,
                 last_crawled_at=datetime.utcnow(),
             )
 

@@ -32,6 +32,7 @@ class CrawlJob(Base):
     # Execution
     started_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)  # Alias for finished_at
     duration_seconds: Mapped[float] = mapped_column(default=0.0)
 
     # Metrics
@@ -51,6 +52,7 @@ class CrawlJob(Base):
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="crawl_jobs")
+    pages: Mapped[list["Page"]] = relationship("Page", back_populates="crawl_job", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<CrawlJob(id={self.id}, status='{self.status}', mode='{self.mode}')>"

@@ -18,6 +18,7 @@ export interface CrawlJob {
   config: Record<string, any>;
   started_at?: string;
   finished_at?: string;
+  completed_at?: string;
   duration_seconds: number;
   pages_discovered: number;
   pages_crawled: number;
@@ -30,15 +31,22 @@ export interface CrawlJob {
 export interface Page {
   id: number;
   project_id: number;
+  crawl_job_id: number;
   url: string;
-  status_code: number;
+  status_code?: number;
+  content_type?: string;
   title?: string;
   meta_description?: string;
+  meta_keywords?: string;
   h1?: string;
   word_count: number;
   lang?: string;
   depth: number;
-  last_crawled_at: string;
+  seo_score: number;
+  internal_links_count: number;
+  external_links_count: number;
+  discovered_at: string;
+  last_crawled_at?: string;
 }
 
 export interface UsageStats {

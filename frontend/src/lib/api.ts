@@ -98,6 +98,19 @@ class APIClient {
     return data;
   }
 
+  async getCrawlPages(crawlJobId: number, skip: number = 0, limit: number = 100): Promise<{
+    items: Page[];
+    total: number;
+    skip: number;
+    limit: number;
+    has_next: boolean;
+  }> {
+    const { data } = await this.client.get(`/crawl/${crawlJobId}/pages`, {
+      params: { skip, limit },
+    });
+    return data;
+  }
+
   // Pages
   async getPages(projectId: number, params?: {
     skip?: number;

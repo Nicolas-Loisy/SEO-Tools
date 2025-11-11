@@ -133,9 +133,10 @@ export default function ProjectDetail() {
         ) : (
           <div className="space-y-3">
             {crawls.map((crawl) => (
-              <div
+              <Link
                 key={crawl.id}
-                className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors"
+                to={`/crawls/${crawl.id}`}
+                className="block p-4 border border-gray-200 rounded-lg hover:border-primary-300 hover:shadow-sm transition-all"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -161,7 +162,7 @@ export default function ProjectDetail() {
                 {crawl.error_message && (
                   <p className="mt-2 text-sm text-red-600">{crawl.error_message}</p>
                 )}
-              </div>
+              </Link>
             ))}
           </div>
         )}

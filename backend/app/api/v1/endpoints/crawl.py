@@ -7,7 +7,9 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.models.project import Project
 from app.models.crawl import CrawlJob
+from app.models.page import Page
 from app.api.v1.schemas.crawl import CrawlJobCreate, CrawlJobResponse
+from app.api.v1.schemas.page import PageResponse, PageListResponse
 
 router = APIRouter()
 
@@ -136,3 +138,60 @@ async def list_project_crawl_jobs(
     )
     jobs = result.scalars().all()
     return jobs
+
+
+@router.get("/{job_id}/pages", response_model=PageListResponse)
+async def get_crawl_pages(
+    job_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get pages from a crawl job with pagination.
+
+    Args:
+        job_id: Crawl job ID
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 100, max: 500)
+        db: Database session
+
+    Returns:
+        Paginated list of pages
+    """
+    # Verify crawl job exists
+    result = await db.execute(select(CrawlJob).where(CrawlJob.id == job_id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Crawl job {job_id} not found",
+        )
+
+    # Limit max results
+    limit = min(limit, 500)
+
+    # Get total count
+    from sqlalchemy import func
+    count_query = select(func.count(Page.id)).where(Page.crawl_job_id == job_id)
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    # Get pages
+    query = (
+        select(Page)
+        .where(Page.crawl_job_id == job_id)
+        .order_by(Page.discovered_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    pages = result.scalars().all()
+
+    return PageListResponse(
+        items=pages,
+        total=total,
+        skip=skip,
+        limit=limit,
+    )

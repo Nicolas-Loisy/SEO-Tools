@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import Dashboard from "@/pages/Dashboard";
 import Projects from "@/pages/Projects";
 import ProjectDetail from "@/pages/ProjectDetail";
+import CrawlDetails from "@/pages/CrawlDetails";
 import Login from "@/pages/Login";
 import Usage from "@/pages/Usage";
 
@@ -39,6 +40,7 @@ function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
+        <Route path="/crawls/:crawlId" element={<CrawlDetails />} />
         <Route path="/usage" element={<Usage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
