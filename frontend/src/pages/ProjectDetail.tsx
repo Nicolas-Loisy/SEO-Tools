@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { api } from '@/lib/api';
 import { Play, Clock, CheckCircle, XCircle, Loader, AlertCircle } from 'lucide-react';
 import type { Project, CrawlJob, Page } from '@/types';
