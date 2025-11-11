@@ -114,7 +114,40 @@ class MeilisearchService:
                 "discovered_at": str(page.get("discovered_at", "")),
             })
 
-        return self.index.add_documents(documents)
+        print(f"Indexing {len(documents)} documents to Meilisearch")
+        print(f"Sample document: {documents[0] if documents else 'None'}")
+
+        task = self.index.add_documents(documents)
+
+        # Wait for the task to complete
+        print(f"Meilisearch task started: {task}")
+
+        # Wait for task completion (with timeout)
+        import time
+        max_wait = 30  # 30 seconds max
+        waited = 0
+
+        while waited < max_wait:
+            try:
+                task_status = self.client.get_task(task.task_uid)
+                print(f"Task status after {waited}s: {getattr(task_status, 'status', 'unknown')}")
+
+                status = getattr(task_status, 'status', None)
+                if status == 'succeeded':
+                    print(f"✓ Indexing completed successfully after {waited}s")
+                    break
+                elif status == 'failed':
+                    error = getattr(task_status, 'error', 'Unknown error')
+                    print(f"✗ Indexing failed: {error}")
+                    break
+
+                time.sleep(1)
+                waited += 1
+            except Exception as e:
+                print(f"Error checking task status: {e}")
+                break
+
+        return task
 
     def search(
         self,
