@@ -208,17 +208,41 @@ class MeilisearchService:
             stats = self.index.get_stats()
             health = self.client.health()
 
-            # Convert stats object to dict - handle both dict and object responses
-            if hasattr(stats, '__dict__'):
-                # It's an object, access attributes directly
-                number_of_documents = getattr(stats, 'number_of_documents', 0)
-                is_indexing = getattr(stats, 'is_indexing', False)
-                field_distribution = getattr(stats, 'field_distribution', {})
+            # Debug: print type and attributes
+            print(f"Stats type: {type(stats)}")
+            print(f"Stats dir: {dir(stats)}")
+
+            # Try to convert to dict if it's an object
+            if isinstance(stats, dict):
+                stats_dict = stats
             else:
-                # It's a dict
-                number_of_documents = stats.get("numberOfDocuments", 0)
-                is_indexing = stats.get("isIndexing", False)
-                field_distribution = stats.get("fieldDistribution", {})
+                # It's an object, convert to dict
+                stats_dict = {}
+                for attr in dir(stats):
+                    if not attr.startswith('_'):
+                        try:
+                            stats_dict[attr] = getattr(stats, attr)
+                        except:
+                            pass
+
+            print(f"Stats dict: {stats_dict}")
+
+            # Get values with various possible keys
+            number_of_documents = (
+                stats_dict.get("numberOfDocuments") or
+                stats_dict.get("number_of_documents") or
+                0
+            )
+            is_indexing = (
+                stats_dict.get("isIndexing") or
+                stats_dict.get("is_indexing") or
+                False
+            )
+            field_distribution = (
+                stats_dict.get("fieldDistribution") or
+                stats_dict.get("field_distribution") or
+                {}
+            )
 
             # Handle health response
             if isinstance(health, dict):
@@ -234,6 +258,8 @@ class MeilisearchService:
                 "field_distribution": field_distribution if isinstance(field_distribution, dict) else {},
             }
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return {
                 "status": "error",
                 "error": str(e),
