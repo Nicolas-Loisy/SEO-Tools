@@ -43,13 +43,18 @@ fi
 echo ""
 
 # Check 4: Check if tasks are in queue
-echo -e "${BLUE}[4/5]${NC} Checking Celery queue..."
-QUEUE_LENGTH=$(docker compose exec -T redis redis-cli llen celery 2>/dev/null || echo "0")
-echo "      Tasks in queue: $QUEUE_LENGTH"
-if [ "$QUEUE_LENGTH" -gt "0" ]; then
-    echo -e "      ${YELLOW}⚠ There are $QUEUE_LENGTH pending tasks in the queue${NC}"
+echo -e "${BLUE}[4/5]${NC} Checking Celery queues..."
+CRAWLER_QUEUE=$(docker compose exec -T redis redis-cli llen crawler 2>/dev/null || echo "0")
+CONTENT_QUEUE=$(docker compose exec -T redis redis-cli llen content 2>/dev/null || echo "0")
+ANALYSIS_QUEUE=$(docker compose exec -T redis redis-cli llen analysis 2>/dev/null || echo "0")
+echo "      Tasks in 'crawler' queue: $CRAWLER_QUEUE"
+echo "      Tasks in 'content' queue: $CONTENT_QUEUE"
+echo "      Tasks in 'analysis' queue: $ANALYSIS_QUEUE"
+TOTAL_TASKS=$((CRAWLER_QUEUE + CONTENT_QUEUE + ANALYSIS_QUEUE))
+if [ "$TOTAL_TASKS" -gt "0" ]; then
+    echo -e "      ${YELLOW}⚠ There are $TOTAL_TASKS pending tasks in queues${NC}"
 else
-    echo -e "      ${GREEN}✓ Queue is empty (tasks are being processed)${NC}"
+    echo -e "      ${GREEN}✓ All queues are empty (tasks are being processed)${NC}"
 fi
 echo ""
 

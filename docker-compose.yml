@@ -132,7 +132,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: seo-saas-celery-worker
-    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A app.workers.celery_app worker --loglevel=info --concurrency=4 --queues=crawler,content,analysis
     env_file:
       - ./backend/.env
     environment:
