@@ -68,6 +68,17 @@ async def search_pages(
     }
 
 
+@router.get("/stats")
+async def get_search_stats():
+    """
+    Get Meilisearch index statistics.
+
+    Returns:
+        Statistics about the search index including document count
+    """
+    return meilisearch_service.get_stats()
+
+
 @router.post("/reindex")
 async def reindex_all_pages(db: AsyncSession = Depends(get_db)):
     """

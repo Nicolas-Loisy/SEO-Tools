@@ -222,6 +222,18 @@ class APIClient {
     const { data } = await this.client.post('/search/reindex');
     return data;
   }
+
+  async getSearchStats(): Promise<{
+    status: string;
+    index_name: string;
+    number_of_documents: number;
+    is_indexing: boolean;
+    field_distribution?: Record<string, number>;
+    error?: string;
+  }> {
+    const { data } = await this.client.get('/search/stats');
+    return data;
+  }
 }
 
 export const api = new APIClient();

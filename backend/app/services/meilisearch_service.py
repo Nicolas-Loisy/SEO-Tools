@@ -197,6 +197,30 @@ class MeilisearchService:
         """
         return self.index.delete_documents_by_filter(f"project_id = {project_id}")
 
+    def get_stats(self) -> Dict[str, Any]:
+        """
+        Get Meilisearch index statistics.
+
+        Returns:
+            Index statistics including document count
+        """
+        try:
+            stats = self.index.get_stats()
+            health = self.client.health()
+            return {
+                "status": "healthy" if health.get("status") == "available" else "unhealthy",
+                "index_name": self.index_name,
+                "number_of_documents": stats.get("numberOfDocuments", 0),
+                "is_indexing": stats.get("isIndexing", False),
+                "field_distribution": stats.get("fieldDistribution", {}),
+            }
+        except Exception as e:
+            return {
+                "status": "error",
+                "error": str(e),
+                "number_of_documents": 0,
+            }
+
 
 # Singleton instance
 meilisearch_service = MeilisearchService()
