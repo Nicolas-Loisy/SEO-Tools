@@ -32,7 +32,6 @@ class CrawlJob(Base):
     # Execution
     started_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
     finished_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)
-    completed_at: Mapped[datetime] = mapped_column(DateTime, nullable=True)  # Alias for finished_at
     duration_seconds: Mapped[float] = mapped_column(default=0.0)
 
     # Metrics

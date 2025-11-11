@@ -328,11 +328,11 @@ export default function Dashboard() {
                     <span>Mode: {crawl.mode}</span>
                     <span>•</span>
                     <span>{crawl.pages_crawled} pages</span>
-                    {crawl.completed_at && (
+                    {crawl.finished_at && (
                       <>
                         <span>•</span>
                         <span>
-                          Duration: {Math.round((new Date(crawl.completed_at).getTime() - new Date(crawl.created_at).getTime()) / 1000)}s
+                          Duration: {Math.round((new Date(crawl.finished_at).getTime() - new Date(crawl.created_at).getTime()) / 1000)}s
                         </span>
                       </>
                     )}

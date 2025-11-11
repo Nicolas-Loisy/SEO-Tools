@@ -18,7 +18,6 @@ export interface CrawlJob {
   config: Record<string, any>;
   started_at?: string;
   finished_at?: string;
-  completed_at?: string;
   duration_seconds: number;
   pages_discovered: number;
   pages_crawled: number;
