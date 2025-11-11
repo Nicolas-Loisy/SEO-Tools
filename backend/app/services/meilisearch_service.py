@@ -207,12 +207,31 @@ class MeilisearchService:
         try:
             stats = self.index.get_stats()
             health = self.client.health()
+
+            # Convert stats object to dict - handle both dict and object responses
+            if hasattr(stats, '__dict__'):
+                # It's an object, access attributes directly
+                number_of_documents = getattr(stats, 'number_of_documents', 0)
+                is_indexing = getattr(stats, 'is_indexing', False)
+                field_distribution = getattr(stats, 'field_distribution', {})
+            else:
+                # It's a dict
+                number_of_documents = stats.get("numberOfDocuments", 0)
+                is_indexing = stats.get("isIndexing", False)
+                field_distribution = stats.get("fieldDistribution", {})
+
+            # Handle health response
+            if isinstance(health, dict):
+                health_status = health.get("status", "unknown")
+            else:
+                health_status = getattr(health, 'status', 'unknown')
+
             return {
-                "status": "healthy" if health.get("status") == "available" else "unhealthy",
+                "status": "healthy" if health_status == "available" else "unhealthy",
                 "index_name": self.index_name,
-                "number_of_documents": stats.get("numberOfDocuments", 0),
-                "is_indexing": stats.get("isIndexing", False),
-                "field_distribution": stats.get("fieldDistribution", {}),
+                "number_of_documents": number_of_documents,
+                "is_indexing": is_indexing,
+                "field_distribution": field_distribution if isinstance(field_distribution, dict) else {},
             }
         except Exception as e:
             return {
