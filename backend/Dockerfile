@@ -18,8 +18,16 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Playwright dependencies
+# Copy requirements
+COPY requirements.txt .
+
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+# Install Playwright system dependencies manually (playwright install-deps doesn't work on Debian Trixie)
 RUN apt-get update && apt-get install -y \
+    # Core dependencies
     libnss3 \
     libnspr4 \
     libatk1.0-0 \
@@ -28,27 +36,35 @@ RUN apt-get update && apt-get install -y \
     libdrm2 \
     libdbus-1-3 \
     libxkbcommon0 \
-    libatspi2.0-0 \
     libxcomposite1 \
     libxdamage1 \
     libxfixes3 \
     libxrandr2 \
     libgbm1 \
+    libpango-1.0-0 \
+    libcairo2 \
     libasound2 \
+    libatspi2.0-0 \
+    libxshmfence1 \
+    # Required system libraries
+    libglib2.0-0 \
+    libnss3 \
+    libx11-6 \
+    libx11-xcb1 \
+    libxcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxrender1 \
+    libxtst6 \
+    # Fonts (using Debian equivalents)
+    fonts-liberation \
+    fonts-noto-color-emoji \
+    fonts-unifont \
     && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
-
-# Install Playwright browsers
-RUN playwright install chromium
-
-# Download spaCy model
-RUN python -m spacy download en_core_web_sm
 
 # Copy application code
 COPY . .
@@ -58,6 +74,9 @@ RUN useradd -m -u 1000 appuser && \
     chown -R appuser:appuser /app
 
 USER appuser
+
+# Install Playwright browsers as appuser
+RUN playwright install chromium
 
 # Expose port
 EXPOSE 8000

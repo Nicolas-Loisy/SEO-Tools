@@ -10,6 +10,7 @@ class PageResponse(BaseModel):
 
     id: int
     project_id: int
+    crawl_job_id: int
     url: str
     canonical_url: Optional[str]
 
@@ -30,6 +31,10 @@ class PageResponse(BaseModel):
 
     discovered_at: datetime
     last_crawled_at: Optional[datetime]
+
+    # Computed fields
+    internal_links_count: int = Field(default=0, description="Number of internal links")
+    external_links_count: int = Field(default=0, description="Number of external links")
 
     class Config:
         from_attributes = True

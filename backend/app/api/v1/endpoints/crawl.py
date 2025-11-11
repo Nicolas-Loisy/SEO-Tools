@@ -7,7 +7,9 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.models.project import Project
 from app.models.crawl import CrawlJob
+from app.models.page import Page
 from app.api.v1.schemas.crawl import CrawlJobCreate, CrawlJobResponse
+from app.api.v1.schemas.page import PageResponse, PageListResponse
 
 router = APIRouter()
 
@@ -38,10 +40,22 @@ async def start_crawl(
         )
 
     # Create crawl job
+    # Convert Pydantic model to dict if needed
+    config_dict = {}
+    if crawl_data.config:
+        if hasattr(crawl_data.config, "model_dump"):
+            # Pydantic v2
+            config_dict = crawl_data.config.model_dump(exclude_none=True)
+        elif hasattr(crawl_data.config, "dict"):
+            # Pydantic v1
+            config_dict = crawl_data.config.dict(exclude_none=True)
+        else:
+            config_dict = crawl_data.config
+
     crawl_job = CrawlJob(
         project_id=crawl_data.project_id,
         mode=crawl_data.mode,
-        config=crawl_data.config or {},
+        config=config_dict,
         status="pending",
     )
 
@@ -50,11 +64,21 @@ async def start_crawl(
     await db.refresh(crawl_job)
 
     # Enqueue Celery task
-    from app.workers.crawler_tasks import crawl_site
+    try:
+        from app.workers.crawler_tasks import crawl_site
 
-    task = crawl_site.delay(crawl_job.id)
-    crawl_job.celery_task_id = task.id
-    await db.commit()
+        print(f"[DEBUG] Sending crawl task for job {crawl_job.id}")
+        task = crawl_site.delay(crawl_job.id)
+        print(f"[DEBUG] Task sent successfully with ID: {task.id}")
+
+        crawl_job.celery_task_id = task.id
+        await db.commit()
+    except Exception as e:
+        print(f"[ERROR] Failed to enqueue Celery task: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't fail the request, just log the error
+        # The job will stay in "pending" status
 
     return crawl_job
 
@@ -114,3 +138,60 @@ async def list_project_crawl_jobs(
     )
     jobs = result.scalars().all()
     return jobs
+
+
+@router.get("/{job_id}/pages", response_model=PageListResponse)
+async def get_crawl_pages(
+    job_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get pages from a crawl job with pagination.
+
+    Args:
+        job_id: Crawl job ID
+        skip: Number of records to skip (default: 0)
+        limit: Maximum number of records to return (default: 100, max: 500)
+        db: Database session
+
+    Returns:
+        Paginated list of pages
+    """
+    # Verify crawl job exists
+    result = await db.execute(select(CrawlJob).where(CrawlJob.id == job_id))
+    job = result.scalar_one_or_none()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Crawl job {job_id} not found",
+        )
+
+    # Limit max results
+    limit = min(limit, 500)
+
+    # Get total count
+    from sqlalchemy import func
+    count_query = select(func.count(Page.id)).where(Page.crawl_job_id == job_id)
+    count_result = await db.execute(count_query)
+    total = count_result.scalar() or 0
+
+    # Get pages
+    query = (
+        select(Page)
+        .where(Page.crawl_job_id == job_id)
+        .order_by(Page.discovered_at.desc())
+        .offset(skip)
+        .limit(limit)
+    )
+    result = await db.execute(query)
+    pages = result.scalars().all()
+
+    return PageListResponse(
+        items=pages,
+        total=total,
+        skip=skip,
+        limit=limit,
+    )

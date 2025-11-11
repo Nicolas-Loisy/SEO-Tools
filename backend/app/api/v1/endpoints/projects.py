@@ -42,10 +42,21 @@ async def create_project(
         db.add(tenant)
         await db.flush()
 
+    # Convert Pydantic model to dict and convert HttpUrl objects to strings
+    project_dict = project_data.model_dump()
+
+    # Convert HttpUrl objects to strings (Pydantic v2 returns Url objects)
+    if project_dict.get('domain'):
+        project_dict['domain'] = str(project_dict['domain'])
+    if project_dict.get('sitemap_url'):
+        project_dict['sitemap_url'] = str(project_dict['sitemap_url'])
+    if project_dict.get('robots_txt_url'):
+        project_dict['robots_txt_url'] = str(project_dict['robots_txt_url'])
+
     # Create project
     project = Project(
         tenant_id=tenant.id,
-        **project_data.model_dump(),
+        **project_dict,
     )
     db.add(project)
     await db.commit()
@@ -134,8 +145,19 @@ async def update_project(
             detail=f"Project {project_id} not found",
         )
 
+    # Convert to dict and handle HttpUrl objects
+    update_dict = project_data.model_dump(exclude_unset=True)
+
+    # Convert HttpUrl objects to strings (Pydantic v2 returns Url objects)
+    if 'domain' in update_dict and update_dict['domain']:
+        update_dict['domain'] = str(update_dict['domain'])
+    if 'sitemap_url' in update_dict and update_dict['sitemap_url']:
+        update_dict['sitemap_url'] = str(update_dict['sitemap_url'])
+    if 'robots_txt_url' in update_dict and update_dict['robots_txt_url']:
+        update_dict['robots_txt_url'] = str(update_dict['robots_txt_url'])
+
     # Update fields
-    for field, value in project_data.model_dump(exclude_unset=True).items():
+    for field, value in update_dict.items():
         setattr(project, field, value)
 
     await db.commit()

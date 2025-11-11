@@ -68,6 +68,18 @@ def crawl_site(job_id: int) -> dict:
             "user_agent": "SEO-SaaS-Bot/1.0",
         }
 
+        # Add Playwright-specific config if using JS mode
+        if job.mode == "js":
+            crawler_config.update({
+                "headless": job.config.get("headless", True),
+                "capture_screenshot": job.config.get("capture_screenshot", False),
+                "screenshot_type": job.config.get("screenshot_type", "viewport"),
+                "viewport": job.config.get("viewport", {"width": 1920, "height": 1080}),
+                "wait_until": job.config.get("wait_until", "networkidle"),
+                "timeout": job.config.get("timeout", 30000),
+                "block_resources": job.config.get("block_resources", ["image", "font", "media"]),
+            })
+
         # Create crawler using Factory pattern
         crawler = CrawlerFactory.create(job.mode, crawler_config)
 
@@ -78,11 +90,28 @@ def crawl_site(job_id: int) -> dict:
         loop.close()
 
         # Save pages to database
+        from app.services.seo_analyzer import seo_analyzer
         total_links = 0
         for crawled_page in crawl_result.pages:
+            # Count links (outgoing_links only contains internal links from the crawler)
+            internal_links_count = len(crawled_page.outgoing_links)
+            external_links_count = 0  # Not currently tracked by crawler
+
+            # Calculate SEO score
+            seo_score, _ = seo_analyzer.analyze_page(
+                url=crawled_page.url,
+                title=crawled_page.title,
+                meta_description=crawled_page.meta_description,
+                h1=crawled_page.h1,
+                word_count=crawled_page.word_count,
+                status_code=crawled_page.status_code,
+                internal_links_count=internal_links_count,
+            )
+
             # Create Page object
             page = Page(
                 project_id=project.id,
+                crawl_job_id=job.id,
                 url=crawled_page.url,
                 url_hash=crawled_page.url_hash,
                 status_code=crawled_page.status_code,
@@ -95,9 +124,12 @@ def crawl_site(job_id: int) -> dict:
                 rendered_html=crawled_page.rendered_html,
                 content_hash=crawled_page.content_hash,
                 word_count=crawled_page.word_count,
+                internal_links_count=internal_links_count,
+                external_links_count=external_links_count,
                 lang=crawled_page.lang,
                 canonical_url=crawled_page.canonical_url,
                 depth=crawled_page.depth,
+                seo_score=seo_score,
                 last_crawled_at=datetime.utcnow(),
             )
 
@@ -122,6 +154,40 @@ def crawl_site(job_id: int) -> dict:
             total_links += len(crawled_page.outgoing_links)
 
         db.commit()
+
+        # Index pages to Meilisearch for full-text search
+        try:
+            from app.services.meilisearch_service import meilisearch_service
+
+            # Get all pages for this crawl job to index
+            pages_to_index = db.query(Page).filter(Page.crawl_job_id == job.id).all()
+
+            # Format pages for Meilisearch
+            documents = []
+            for page in pages_to_index:
+                documents.append({
+                    "id": page.id,
+                    "project_id": page.project_id,
+                    "crawl_job_id": page.crawl_job_id,
+                    "url": page.url,
+                    "title": page.title or "",
+                    "meta_description": page.meta_description or "",
+                    "h1": page.h1 or "",
+                    "text_content": page.text_content or "",
+                    "status_code": page.status_code,
+                    "word_count": page.word_count,
+                    "seo_score": page.seo_score,
+                    "depth": page.depth,
+                    "internal_links_count": page.internal_links_count,
+                    "external_links_count": page.external_links_count,
+                })
+
+            # Index documents in bulk
+            if documents:
+                meilisearch_service.index_pages_bulk(documents)
+        except Exception as e:
+            # Log error but don't fail the crawl
+            print(f"Warning: Failed to index pages to Meilisearch: {e}")
 
         # Update job with results
         job.status = "completed"

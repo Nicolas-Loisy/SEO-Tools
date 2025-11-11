@@ -62,6 +62,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Rate limiting middleware
+from app.middleware.rate_limit import RateLimitMiddleware
+
+app.add_middleware(RateLimitMiddleware)
+
 # Include API router
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 

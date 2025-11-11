@@ -20,6 +20,9 @@ class Page(Base):
     project_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    crawl_job_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("crawl_jobs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
 
     # URL & Identity
     url: Mapped[str] = mapped_column(String(2000), nullable=False)
@@ -42,6 +45,10 @@ class Page(Base):
     content_hash: Mapped[str] = mapped_column(String(64), nullable=True)  # MD5 of text content
     word_count: Mapped[int] = mapped_column(Integer, default=0)
 
+    # Link counts
+    internal_links_count: Mapped[int] = mapped_column(Integer, default=0)
+    external_links_count: Mapped[int] = mapped_column(Integer, default=0)
+
     # Hreflang & Internationalization
     hreflang: Mapped[str] = mapped_column(String(2000), nullable=True)  # JSON string
     lang: Mapped[str] = mapped_column(String(10), nullable=True)
@@ -54,11 +61,12 @@ class Page(Base):
     # SEO Scores (computed)
     seo_score: Mapped[float] = mapped_column(default=0.0)
 
-    # Vector embedding for semantic similarity (768 dims for sentence-transformers)
-    embedding: Mapped[Vector] = mapped_column(Vector(768), nullable=True)
+    # Vector embedding for semantic similarity (384 dims for all-MiniLM-L6-v2)
+    embedding: Mapped[Vector] = mapped_column(Vector(384), nullable=True)
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="pages")
+    crawl_job: Mapped["CrawlJob"] = relationship("CrawlJob", back_populates="pages")
 
     outgoing_links: Mapped[list["Link"]] = relationship(
         "Link",

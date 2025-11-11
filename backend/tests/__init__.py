@@ -1,1 +1,1 @@
-"""Test suite for SEO SaaS backend."""
+"""Test suite for SEO SaaS Tool."""

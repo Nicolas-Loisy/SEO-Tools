@@ -7,6 +7,7 @@ from app.models.page import Page, Link
 from app.models.crawl import CrawlJob
 from app.models.content import ContentDraft, SiteTree
 from app.models.schema import SchemaSuggestion
+from app.models.webhook import Webhook, WebhookDelivery
 
 __all__ = [
     "Tenant",
@@ -18,4 +19,6 @@ __all__ = [
     "ContentDraft",
     "SiteTree",
     "SchemaSuggestion",
+    "Webhook",
+    "WebhookDelivery",
 ]

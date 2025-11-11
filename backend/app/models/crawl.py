@@ -51,6 +51,7 @@ class CrawlJob(Base):
 
     # Relationships
     project: Mapped["Project"] = relationship("Project", back_populates="crawl_jobs")
+    pages: Mapped[list["Page"]] = relationship("Page", back_populates="crawl_job", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<CrawlJob(id={self.id}, status='{self.status}', mode='{self.mode}')>"
