@@ -19,12 +19,32 @@ class MeilisearchService:
 
     def _initialize_index(self):
         """Initialize or get the pages index with proper settings."""
+        # Check if index exists and has proper primary key
         try:
-            # Try to get existing index
-            self.index = self.client.index(self.index_name)
-        except Exception:
-            # Create index if it doesn't exist
-            self.client.create_index(self.index_name, {"primaryKey": "id"})
+            existing_index = self.client.get_index(self.index_name)
+            # Check if primary key is set
+            primary_key = getattr(existing_index, 'primary_key', None)
+
+            if primary_key != 'id':
+                # Index exists but primary key is wrong or not set, delete and recreate
+                print(f"Index exists with wrong primary key: {primary_key}. Recreating...")
+                self.client.delete_index(self.index_name)
+                # Wait a bit for deletion to complete
+                import time
+                time.sleep(1)
+                raise Exception("Need to recreate")
+            else:
+                print(f"Index '{self.index_name}' exists with correct primary key 'id'")
+                self.index = existing_index
+        except Exception as e:
+            print(f"Creating new index '{self.index_name}' with primary key 'id'")
+            # Create index with explicit primary key
+            task = self.client.create_index(self.index_name, {"primaryKey": "id"})
+
+            # Wait for index creation to complete
+            import time
+            time.sleep(1)
+
             self.index = self.client.index(self.index_name)
 
         # Configure searchable attributes
