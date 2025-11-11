@@ -218,9 +218,13 @@ class MeilisearchService:
                 "filter": filter_string,
                 "limit": limit,
                 "offset": offset,
-                "attributesToHighlight": ["title", "meta_description", "text_content"],
+                "attributesToHighlight": ["title", "meta_description", "h1", "text_content"],
                 "highlightPreTag": "<mark>",
                 "highlightPostTag": "</mark>",
+                "cropLength": 200,  # Length of text snippets (in words)
+                "cropMarker": "...",
+                "showMatchesPosition": True,  # Show where matches are found
+                "attributesToCrop": ["text_content"],  # Crop only text_content, show full title/description
             }
         )
 
