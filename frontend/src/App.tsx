@@ -10,6 +10,7 @@ import Login from "@/pages/Login";
 import Usage from "@/pages/Usage";
 import Search from "@/pages/Search";
 import InternalLinking from "@/pages/InternalLinking";
+import StructuredData from "@/pages/StructuredData";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -43,6 +44,7 @@ function App() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:id" element={<ProjectDetail />} />
         <Route path="/projects/:id/internal-linking" element={<InternalLinking />} />
+        <Route path="/projects/:id/structured-data" element={<StructuredData />} />
         <Route path="/crawls/:crawlId" element={<CrawlDetails />} />
         <Route path="/search" element={<Search />} />
         <Route path="/usage" element={<Usage />} />

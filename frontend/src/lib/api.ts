@@ -313,6 +313,78 @@ class APIClient {
     const { data } = await this.client.get(`/analysis/projects/${projectId}/link-graph/export`);
     return data;
   }
+
+  // Structured Data / Schema.org
+  async detectSchemaTypes(projectId: number, pageId: number): Promise<{
+    page_id: number;
+    url: string;
+    detected_types: Array<{
+      type: string;
+      priority: number;
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/pages/${pageId}/schema/detect`);
+    return data;
+  }
+
+  async generateJSONLD(
+    projectId: number,
+    pageId: number,
+    schemaType: string,
+    additionalData?: Record<string, any>
+  ): Promise<{
+    page_id: number;
+    schema_type: string;
+    schema: Record<string, any>;
+    html: string;
+    validation: {
+      valid: boolean;
+      errors: string[];
+      warnings: string[];
+    };
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/generate`,
+      { additional_data: additionalData },
+      { params: { schema_type: schemaType } }
+    );
+    return data;
+  }
+
+  async validateJSONLD(
+    projectId: number,
+    pageId: number,
+    schema: Record<string, any>
+  ): Promise<{
+    page_id: number;
+    validation: {
+      valid: boolean;
+      errors: string[];
+      warnings: string[];
+    };
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/validate`,
+      { schema }
+    );
+    return data;
+  }
+
+  async bulkDetectSchemas(projectId: number, limit: number = 50): Promise<{
+    project_id: number;
+    total_pages: number;
+    pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      detected_types: string[];
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/schema/bulk-detect`, {
+      params: { limit }
+    });
+    return data;
+  }
 }
 
 export const api = new APIClient();
