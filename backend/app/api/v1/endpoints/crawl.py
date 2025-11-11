@@ -62,11 +62,21 @@ async def start_crawl(
     await db.refresh(crawl_job)
 
     # Enqueue Celery task
-    from app.workers.crawler_tasks import crawl_site
+    try:
+        from app.workers.crawler_tasks import crawl_site
 
-    task = crawl_site.delay(crawl_job.id)
-    crawl_job.celery_task_id = task.id
-    await db.commit()
+        print(f"[DEBUG] Sending crawl task for job {crawl_job.id}")
+        task = crawl_site.delay(crawl_job.id)
+        print(f"[DEBUG] Task sent successfully with ID: {task.id}")
+
+        crawl_job.celery_task_id = task.id
+        await db.commit()
+    except Exception as e:
+        print(f"[ERROR] Failed to enqueue Celery task: {e}")
+        import traceback
+        traceback.print_exc()
+        # Don't fail the request, just log the error
+        # The job will stay in "pending" status
 
     return crawl_job
 
