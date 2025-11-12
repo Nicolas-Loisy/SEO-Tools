@@ -26,7 +26,6 @@ export default function StructuredData() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id || "0");
 
-  const [pages, setPages] = useState<Page[]>([]);
   const [detectedSchemas, setDetectedSchemas] = useState<DetectedSchema[]>([]);
   const [selectedPage, setSelectedPage] = useState<DetectedSchema | null>(null);
   const [selectedSchemaType, setSelectedSchemaType] = useState<string>("");
@@ -35,23 +34,6 @@ export default function StructuredData() {
   const [isBulkDetecting, setIsBulkDetecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-
-  // Load pages on mount
-  useEffect(() => {
-    loadPages();
-  }, [projectId]);
-
-  const loadPages = async () => {
-    try {
-      setIsLoading(true);
-      const pagesData = await api.getPages(projectId, { limit: 100 });
-      setPages(pagesData);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to load pages");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleBulkDetect = async () => {
     try {
