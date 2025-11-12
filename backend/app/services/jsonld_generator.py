@@ -2,8 +2,10 @@
 
 from typing import Dict, Any, Optional, List
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
 import json
+import re
+from bs4 import BeautifulSoup
 
 from app.services.schema_detector import SchemaType
 from app.models.page import Page
@@ -11,6 +13,107 @@ from app.models.page import Page
 
 class JSONLDGenerator:
     """Service for generating Schema.org JSON-LD markup."""
+
+    def _extract_metadata_from_html(self, page: Page) -> Dict[str, Any]:
+        """Extract rich metadata from page HTML."""
+        metadata = {
+            'images': [],
+            'author': None,
+            'published_date': None,
+            'modified_date': None,
+            'logo': None,
+        }
+
+        if not page.html_content:
+            return metadata
+
+        try:
+            soup = BeautifulSoup(page.html_content, 'lxml')
+            base_url = f"{urlparse(page.url).scheme}://{urlparse(page.url).netloc}"
+
+            # Extract images
+            # 1. OpenGraph image
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                img_url = og_image['content']
+                if not img_url.startswith('http'):
+                    img_url = urljoin(base_url, img_url)
+                metadata['images'].append(img_url)
+
+            # 2. Twitter card image
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                img_url = twitter_image['content']
+                if not img_url.startswith('http'):
+                    img_url = urljoin(base_url, img_url)
+                if img_url not in metadata['images']:
+                    metadata['images'].append(img_url)
+
+            # 3. First article image
+            article = soup.find(['article', 'main'])
+            if article:
+                first_img = article.find('img', src=True)
+                if first_img:
+                    img_url = first_img['src']
+                    if not img_url.startswith('http'):
+                        img_url = urljoin(base_url, img_url)
+                    if img_url not in metadata['images']:
+                        metadata['images'].append(img_url)
+
+            # Extract author
+            # 1. Meta author
+            author_meta = soup.find('meta', attrs={'name': 'author'})
+            if author_meta and author_meta.get('content'):
+                metadata['author'] = author_meta['content']
+
+            # 2. Article:author
+            if not metadata['author']:
+                article_author = soup.find('meta', property='article:author')
+                if article_author and article_author.get('content'):
+                    metadata['author'] = article_author['content']
+
+            # 3. Schema.org author
+            if not metadata['author']:
+                schema_author = soup.find('span', itemprop='author')
+                if schema_author:
+                    metadata['author'] = schema_author.get_text(strip=True)
+
+            # Extract dates
+            # 1. Article published time
+            published_meta = soup.find('meta', property='article:published_time')
+            if published_meta and published_meta.get('content'):
+                metadata['published_date'] = published_meta['content']
+
+            # 2. Time tag with datetime
+            if not metadata['published_date']:
+                time_tag = soup.find('time', datetime=True)
+                if time_tag:
+                    metadata['published_date'] = time_tag['datetime']
+
+            # 3. Modified time
+            modified_meta = soup.find('meta', property='article:modified_time')
+            if modified_meta and modified_meta.get('content'):
+                metadata['modified_date'] = modified_meta['content']
+
+            # Extract logo
+            logo_meta = soup.find('meta', property='og:logo')
+            if logo_meta and logo_meta.get('content'):
+                metadata['logo'] = logo_meta['content']
+
+            # Link rel icon as fallback
+            if not metadata['logo']:
+                icon_link = soup.find('link', rel='icon')
+                if icon_link and icon_link.get('href'):
+                    logo_url = icon_link['href']
+                    if not logo_url.startswith('http'):
+                        logo_url = urljoin(base_url, logo_url)
+                    metadata['logo'] = logo_url
+
+        except Exception as e:
+            # Fail silently, return empty metadata
+            pass
+
+        return metadata
 
     def generate_schema(
         self,
@@ -69,19 +172,35 @@ class JSONLDGenerator:
         parsed_url = urlparse(page.url)
         base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
+        # Extract metadata from HTML
+        metadata = self._extract_metadata_from_html(page)
+
+        # Use extracted dates or fallback to crawl dates
+        published_date = metadata['published_date'] or (
+            page.created_at.isoformat() if page.created_at else datetime.utcnow().isoformat()
+        )
+        modified_date = metadata['modified_date'] or (
+            page.updated_at.isoformat() if page.updated_at else datetime.utcnow().isoformat()
+        )
+
         schema = {
             "headline": page.title or "Untitled",
             "description": page.meta_description or "",
             "url": page.url,
-            "datePublished": page.created_at.isoformat() if page.created_at else datetime.utcnow().isoformat(),
-            "dateModified": page.updated_at.isoformat() if page.updated_at else datetime.utcnow().isoformat(),
+            "datePublished": published_date,
+            "dateModified": modified_date,
         }
 
-        # Add author (can be customized via additional_data)
+        # Add author (priority: additional_data > extracted > default)
         if additional_data and 'author' in additional_data:
             schema["author"] = {
                 "@type": "Person",
                 "name": additional_data['author']
+            }
+        elif metadata['author']:
+            schema["author"] = {
+                "@type": "Person",
+                "name": metadata['author']
             }
         else:
             schema["author"] = {
@@ -89,19 +208,31 @@ class JSONLDGenerator:
                 "name": parsed_url.netloc
             }
 
-        # Add publisher
+        # Add publisher with logo
+        publisher = {
+            "@type": "Organization",
+            "name": parsed_url.netloc,
+            "url": base_url
+        }
+
+        # Add logo if available
+        if metadata['logo']:
+            publisher["logo"] = {
+                "@type": "ImageObject",
+                "url": metadata['logo']
+            }
+
         if additional_data and 'publisher' in additional_data:
             schema["publisher"] = additional_data['publisher']
         else:
-            schema["publisher"] = {
-                "@type": "Organization",
-                "name": parsed_url.netloc,
-                "url": base_url
-            }
+            schema["publisher"] = publisher
 
-        # Add image if available
+        # Add images (priority: additional_data > extracted)
         if additional_data and 'image' in additional_data:
             schema["image"] = additional_data['image']
+        elif metadata['images']:
+            # Google recommends multiple images for better appearance
+            schema["image"] = metadata['images'][:3]  # Max 3 images
 
         # Add word count if available
         if page.word_count and page.word_count > 0:

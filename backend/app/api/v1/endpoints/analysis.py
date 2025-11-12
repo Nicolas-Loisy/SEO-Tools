@@ -704,3 +704,76 @@ async def bulk_detect_schemas(
         "total_pages": len(results),
         "pages": results
     }
+
+
+@router.post("/projects/{project_id}/pages/{page_id}/schema/enhance")
+async def enhance_jsonld_with_ai(
+    project_id: int,
+    page_id: int,
+    schema: Dict[str, Any],
+    provider: str = "openai",
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Enhance a JSON-LD schema using AI/LLM.
+
+    Args:
+        project_id: Project ID
+        page_id: Page ID
+        schema: Base JSON-LD schema to enhance
+        provider: LLM provider (openai, anthropic)
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        Enhanced JSON-LD schema with improvements and recommendations
+    """
+    from app.services.schema_enhancer import schema_enhancer
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Get page - use sync session
+    from app.core.database import SessionLocal
+    from app.models.page import Page
+
+    sync_db = SessionLocal()
+
+    try:
+        # Get page using sync query
+        page = sync_db.query(Page).filter(
+            Page.id == page_id,
+            Page.project_id == project_id
+        ).first()
+
+        if not page:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Page not found",
+            )
+
+        # Enhance schema with AI
+        result = await schema_enhancer.enhance_with_suggestions(
+            page=page,
+            base_schema=schema,
+            provider=provider
+        )
+
+        return {
+            "page_id": page_id,
+            "enhanced_schema": result.get("enhanced_schema", schema),
+            "improvements": result.get("improvements", []),
+            "recommendations": result.get("recommendations", []),
+            "provider": provider
+        }
+
+    finally:
+        sync_db.close()
