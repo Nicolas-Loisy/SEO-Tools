@@ -17,15 +17,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
 
-    // Auto-refresh every 10 seconds if there are active crawls
+    // Auto-refresh every 30 seconds to check for updates
     const interval = setInterval(() => {
-      if (recentCrawls.some(crawl => crawl.status === 'pending' || crawl.status === 'running')) {
-        loadData();
-      }
-    }, 10000); // 10 seconds
+      loadData();
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [recentCrawls]);
+  }, []); // Empty dependencies - only run once on mount
 
   const loadData = async () => {
     try {
