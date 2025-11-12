@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { Play, Clock, CheckCircle, XCircle, Loader, AlertCircle } from 'lucide-react';
+import { Play, Clock, CheckCircle, XCircle, Loader, AlertCircle, Link2, FileJson } from 'lucide-react';
 import type { Project, CrawlJob, Page } from '@/types';
 
 export default function ProjectDetail() {
@@ -120,6 +120,60 @@ export default function ProjectDetail() {
               ? new Date(project.last_crawl_at).toLocaleString()
               : 'Never'}
           </p>
+        </div>
+      </div>
+
+      {/* SEO Tools */}
+      <div className="card">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">SEO Tools</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link
+            to={`/projects/${project.id}/internal-linking`}
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-all"
+          >
+            <div className="flex items-start">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Link2 className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="font-semibold text-gray-900">Internal Linking</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Analyze link structure and get recommendations
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <Link
+            to={`/projects/${project.id}/structured-data`}
+            className="p-4 border-2 border-gray-200 rounded-lg hover:border-primary-300 hover:bg-primary-50 transition-all"
+          >
+            <div className="flex items-start">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <FileJson className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="font-semibold text-gray-900">Structured Data</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Generate and validate Schema.org JSON-LD
+                </p>
+              </div>
+            </div>
+          </Link>
+
+          <div className="p-4 border-2 border-gray-200 rounded-lg opacity-50 cursor-not-allowed">
+            <div className="flex items-start">
+              <div className="p-2 bg-gray-100 rounded-lg">
+                <AlertCircle className="w-6 h-6 text-gray-400" />
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="font-semibold text-gray-900">More tools</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Coming soon...
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
