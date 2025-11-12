@@ -385,6 +385,26 @@ class APIClient {
     });
     return data;
   }
+
+  async enhanceSchemaWithAI(
+    projectId: number,
+    pageId: number,
+    schema: Record<string, any>,
+    provider: string = 'openai'
+  ): Promise<{
+    page_id: number;
+    enhanced_schema: Record<string, any>;
+    improvements: string[];
+    recommendations: string[];
+    provider: string;
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/enhance`,
+      { schema },
+      { params: { provider } }
+    );
+    return data;
+  }
 }
 
 export const api = new APIClient();

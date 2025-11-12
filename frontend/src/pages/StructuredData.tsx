@@ -32,8 +32,11 @@ export default function StructuredData() {
   const [generatedSchema, setGeneratedSchema] = useState<GeneratedSchema | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isBulkDetecting, setIsBulkDetecting] = useState(false);
+  const [isEnhancing, setIsEnhancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [aiImprovements, setAiImprovements] = useState<string[]>([]);
+  const [aiRecommendations, setAiRecommendations] = useState<string[]>([]);
 
   const handleBulkDetect = async () => {
     try {
@@ -89,6 +92,44 @@ export default function StructuredData() {
     navigator.clipboard.writeText(JSON.stringify(generatedSchema.schema, null, 2));
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleEnhanceWithAI = async () => {
+    if (!selectedPage || !generatedSchema) return;
+
+    try {
+      setIsEnhancing(true);
+      setError(null);
+      setAiImprovements([]);
+      setAiRecommendations([]);
+
+      const result = await api.enhanceSchemaWithAI(
+        projectId,
+        selectedPage.page_id,
+        generatedSchema.schema,
+        'openai' // Can be made configurable
+      );
+
+      // Update the schema with enhanced version
+      setGeneratedSchema({
+        ...generatedSchema,
+        schema: result.enhanced_schema,
+        html: formatSchemaAsHTML(result.enhanced_schema),
+      });
+
+      setAiImprovements(result.improvements || []);
+      setAiRecommendations(result.recommendations || []);
+
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to enhance schema with AI");
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
+  const formatSchemaAsHTML = (schema: Record<string, any>): string => {
+    const jsonStr = JSON.stringify(schema, null, 2);
+    return `<script type="application/ld+json">\n${jsonStr}\n</script>`;
   };
 
   return (
@@ -277,6 +318,45 @@ export default function StructuredData() {
                     </div>
                   </div>
 
+                  {/* AI Enhancement Section */}
+                  {(aiImprovements.length > 0 || aiRecommendations.length > 0) && (
+                    <div className="bg-white rounded-lg shadow p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        ✨ AI Enhancements
+                      </h3>
+
+                      {aiImprovements.length > 0 && (
+                        <div className="mb-4">
+                          <div className="text-sm font-medium text-green-700 mb-2">
+                            Improvements Made:
+                          </div>
+                          <ul className="list-disc list-inside space-y-1">
+                            {aiImprovements.map((improvement, idx) => (
+                              <li key={idx} className="text-sm text-gray-700">
+                                {improvement}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {aiRecommendations.length > 0 && (
+                        <div>
+                          <div className="text-sm font-medium text-blue-700 mb-2">
+                            SEO Recommendations:
+                          </div>
+                          <ul className="list-disc list-inside space-y-1">
+                            {aiRecommendations.map((rec, idx) => (
+                              <li key={idx} className="text-sm text-gray-700">
+                                {rec}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* JSON-LD Output */}
                   <div className="bg-white rounded-lg shadow p-6">
                     <div className="flex items-center justify-between mb-4">
@@ -284,6 +364,23 @@ export default function StructuredData() {
                         Generated JSON-LD
                       </h3>
                       <div className="flex gap-2">
+                        <button
+                          onClick={handleEnhanceWithAI}
+                          disabled={isEnhancing}
+                          className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                        >
+                          {isEnhancing ? (
+                            <>
+                              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              Enhancing...
+                            </>
+                          ) : (
+                            <>✨ AI Enhance</>
+                          )}
+                        </button>
                         <button
                           onClick={handleCopyJSON}
                           className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
