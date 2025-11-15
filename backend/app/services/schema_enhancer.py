@@ -269,31 +269,54 @@ Your task is to enhance the following JSON-LD schema and provide actionable reco
 5. Ensure all URLs are absolute and valid
 6. Follow Google's structured data guidelines
 
-**CRITICAL - Response Format:**
-You MUST respond with ONLY a valid JSON object in this exact format:
+**⚠️ CRITICAL - Response Format (READ CAREFULLY):**
+
+You MUST respond with ONLY a valid JSON object. Here is an EXACT example of the correct format:
 
 {{
   "enhanced_schema": {{
     "@context": "https://schema.org",
     "@type": "{schema_type}",
-    ... (all the enhanced schema properties here - do NOT nest under another "schema" key)
+    "name": "Enhanced name here",
+    "url": "https://example.com"
   }},
   "improvements": [
-    "Specific improvement 1",
-    "Specific improvement 2"
+    "Added missing name field",
+    "Enhanced description"
   ],
   "recommendations": [
-    "Additional SEO recommendation 1",
-    "Additional SEO recommendation 2"
+    "Consider adding images",
+    "Add author information"
   ]
 }}
 
-**Important Rules:**
-- The "enhanced_schema" value MUST be a direct JSON-LD schema object starting with @context and @type
-- Do NOT wrap the schema in additional "schema" or nested objects
-- Do NOT invent data - only use information from the page content provided
-- Preserve all valuable existing fields
-- Return ONLY the JSON object, no explanatory text before or after
+**⚠️ WRONG - DO NOT DO THIS:**
+{{
+  "enhanced_schema": {{
+    "schema": {{
+      "@context": "https://schema.org",
+      ...
+    }}
+  }}
+}}
+
+**⚠️ WRONG - DO NOT DO THIS:**
+{{
+  "schema": {{
+    "@context": "https://schema.org",
+    ...
+  }}
+}}
+
+**✅ CORRECT FORMAT:**
+The "enhanced_schema" key must contain the Schema.org JSON-LD object DIRECTLY, starting immediately with "@context" and "@type" as the first properties. NO intermediate "schema" key or any other wrapper.
+
+**Mandatory Rules:**
+1. Return ONLY the JSON object, no explanatory text before or after
+2. The "enhanced_schema" value starts directly with {{"@context": "https://schema.org", "@type": "{schema_type}", ...}}
+3. Do NOT nest the schema under ANY additional keys like "schema", "data", "result", etc.
+4. Do NOT invent data - only use information from the page content provided
+5. Preserve all valuable existing fields from the current schema
 """
 
         try:

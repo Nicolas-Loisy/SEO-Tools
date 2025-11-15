@@ -760,6 +760,11 @@ async def enhance_jsonld_with_ai(
                 detail="Page not found",
             )
 
+        # Log the input schema structure for debugging
+        print(f"[API enhance] Input schema keys: {list(schema.keys())[:10]}")
+        print(f"[API enhance] Input has @context: {'@context' in schema}")
+        print(f"[API enhance] Input has nested schema: {'schema' in schema and '@context' not in schema}")
+
         # Enhance schema with AI
         result = await schema_enhancer.enhance_with_suggestions(
             page=page,
@@ -767,9 +772,20 @@ async def enhance_jsonld_with_ai(
             provider=provider
         )
 
+        # Get the enhanced schema and ensure it's unwrapped
+        enhanced = result.get("enhanced_schema", schema)
+
+        # Double-check: unwrap any remaining nested schema keys
+        from app.services.schema_enhancer import schema_enhancer as se
+        enhanced = se._unwrap_nested_schema(enhanced)
+
+        print(f"[API enhance] Output enhanced_schema keys: {list(enhanced.keys())[:10]}")
+        print(f"[API enhance] Output has @context: {'@context' in enhanced}")
+        print(f"[API enhance] Output has nested schema: {'schema' in enhanced and '@context' not in enhanced}")
+
         return {
             "page_id": page_id,
-            "enhanced_schema": result.get("enhanced_schema", schema),
+            "enhanced_schema": enhanced,
             "improvements": result.get("improvements", []),
             "recommendations": result.get("recommendations", []),
             "provider": provider
