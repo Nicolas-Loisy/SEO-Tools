@@ -31,6 +31,9 @@ class SchemaEnhancer:
         Returns:
             Enhanced JSON-LD schema
         """
+        # Unwrap any nested "schema" keys in input
+        base_schema = self._unwrap_nested_schema(base_schema)
+
         # Build prompt for LLM
         prompt = self._build_enhancement_prompt(page, base_schema)
 
@@ -100,7 +103,7 @@ Return the enhanced JSON-LD schema:"""
         response: str,
         fallback_schema: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Parse and validate LLM response."""
+        """Parse and validate LLM response for simple schema enhancement."""
         try:
             # Try to extract JSON from response
             # LLM might wrap it in ```json``` code blocks
@@ -132,6 +135,85 @@ Return the enhanced JSON-LD schema:"""
             print(f"Failed to parse LLM response: {e}")
             return fallback_schema
 
+    def _unwrap_nested_schema(self, schema: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Unwrap incorrectly nested schema objects.
+
+        Sometimes schemas get wrapped in extra "schema" keys.
+        This function unwraps them to get the actual JSON-LD schema.
+        """
+        # If schema has a single "schema" key that contains the actual schema
+        if 'schema' in schema and '@context' not in schema and '@type' not in schema:
+            # Recursively unwrap in case of multiple levels
+            return self._unwrap_nested_schema(schema['schema'])
+
+        return schema
+
+    def _parse_enhancement_response(
+        self,
+        response: str,
+        fallback_result: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Parse and validate LLM response for enhancement with suggestions.
+
+        Expects response in format:
+        {
+            "enhanced_schema": {...},
+            "improvements": [...],
+            "recommendations": [...]
+        }
+        """
+        try:
+            # Try to extract JSON from response
+            response = response.strip()
+
+            # Remove code block markers if present
+            if response.startswith('```json'):
+                response = response[7:]
+            if response.startswith('```'):
+                response = response[3:]
+            if response.endswith('```'):
+                response = response[:-3]
+
+            response = response.strip()
+
+            # Parse JSON
+            result = json.loads(response)
+
+            # Validate structure
+            if not isinstance(result, dict):
+                return fallback_result
+
+            # Extract enhanced_schema
+            enhanced_schema = result.get('enhanced_schema', {})
+
+            # Ensure enhanced_schema is valid
+            if not isinstance(enhanced_schema, dict):
+                enhanced_schema = fallback_result.get('enhanced_schema', {})
+
+            # Unwrap any nested "schema" keys
+            enhanced_schema = self._unwrap_nested_schema(enhanced_schema)
+
+            # Validate it's a proper JSON-LD schema
+            if '@context' not in enhanced_schema:
+                enhanced_schema['@context'] = 'https://schema.org'
+
+            # If @type is missing, use fallback
+            if '@type' not in enhanced_schema:
+                enhanced_schema = fallback_result.get('enhanced_schema', {})
+
+            # Build clean result
+            return {
+                'enhanced_schema': enhanced_schema,
+                'improvements': result.get('improvements', []) if isinstance(result.get('improvements'), list) else [],
+                'recommendations': result.get('recommendations', []) if isinstance(result.get('recommendations'), list) else []
+            }
+
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            print(f"Failed to parse enhancement response: {e}")
+            return fallback_result
+
     async def enhance_with_suggestions(
         self,
         page: Page,
@@ -143,6 +225,9 @@ Return the enhanced JSON-LD schema:"""
 
         Returns both enhanced schema and human-readable suggestions.
         """
+        # Unwrap any nested "schema" keys in input
+        base_schema = self._unwrap_nested_schema(base_schema)
+
         prompt = f"""You are an SEO expert. Analyze this Schema.org JSON-LD and provide:
 1. Enhanced version of the schema
 2. List of improvements made
@@ -173,7 +258,7 @@ Respond in this JSON format:
                 temperature=0.3
             )
 
-            result = self._parse_llm_response(response, {
+            result = self._parse_enhancement_response(response, {
                 "enhanced_schema": base_schema,
                 "improvements": [],
                 "recommendations": []
