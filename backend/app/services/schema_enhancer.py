@@ -180,27 +180,41 @@ Return the enhanced JSON-LD schema:"""
 
             # Parse JSON
             result = json.loads(response)
+            print(f"[Parser] Parsed JSON successfully, top-level keys: {list(result.keys())}")
 
             # Validate structure
             if not isinstance(result, dict):
+                print(f"[Parser] Result is not a dict, using fallback")
                 return fallback_result
 
             # Extract enhanced_schema
             enhanced_schema = result.get('enhanced_schema', {})
+            print(f"[Parser] Extracted enhanced_schema, keys: {list(enhanced_schema.keys()) if isinstance(enhanced_schema, dict) else 'NOT A DICT'}")
 
             # Ensure enhanced_schema is valid
             if not isinstance(enhanced_schema, dict):
+                print(f"[Parser] enhanced_schema is not a dict, using fallback")
                 enhanced_schema = fallback_result.get('enhanced_schema', {})
+
+            # Check for nested "schema" before unwrapping
+            has_nested_schema = 'schema' in enhanced_schema and '@context' not in enhanced_schema
+            if has_nested_schema:
+                print(f"[Parser] WARNING: Found nested 'schema' key, unwrapping...")
 
             # Unwrap any nested "schema" keys
             enhanced_schema = self._unwrap_nested_schema(enhanced_schema)
 
+            if has_nested_schema:
+                print(f"[Parser] After unwrap, keys: {list(enhanced_schema.keys())[:5]}")
+
             # Validate it's a proper JSON-LD schema
             if '@context' not in enhanced_schema:
+                print(f"[Parser] Missing @context, adding default")
                 enhanced_schema['@context'] = 'https://schema.org'
 
             # If @type is missing, use fallback
             if '@type' not in enhanced_schema:
+                print(f"[Parser] Missing @type, using fallback schema")
                 enhanced_schema = fallback_result.get('enhanced_schema', {})
 
             # Build clean result
@@ -211,7 +225,8 @@ Return the enhanced JSON-LD schema:"""
             }
 
         except (json.JSONDecodeError, KeyError, TypeError) as e:
-            print(f"Failed to parse enhancement response: {e}")
+            print(f"[Parser] Failed to parse enhancement response: {type(e).__name__}: {e}")
+            print(f"[Parser] Response preview: {response[:300]}...")
             return fallback_result
 
     async def enhance_with_suggestions(
@@ -228,26 +243,57 @@ Return the enhanced JSON-LD schema:"""
         # Unwrap any nested "schema" keys in input
         base_schema = self._unwrap_nested_schema(base_schema)
 
-        prompt = f"""You are an SEO expert. Analyze this Schema.org JSON-LD and provide:
-1. Enhanced version of the schema
-2. List of improvements made
-3. Additional SEO recommendations
+        schema_type = base_schema.get("@type", "Article")
 
-**Page URL:** {page.url}
-**Page Title:** {page.title or 'N/A'}
-**Content Preview:** {(page.text_content or '')[:300]}...
+        prompt = f"""You are an SEO expert specializing in Schema.org structured data.
 
-**Current Schema:**
+Your task is to enhance the following JSON-LD schema and provide actionable recommendations.
+
+**Page Information:**
+- URL: {page.url}
+- Title: {page.title or 'N/A'}
+- Meta Description: {page.meta_description or 'N/A'}
+- H1: {page.h1 or 'N/A'}
+- Content Preview: {(page.text_content or '')[:500]}...
+
+**Current Schema ({schema_type}):**
 ```json
 {json.dumps(base_schema, indent=2)}
 ```
 
-Respond in this JSON format:
+**Instructions:**
+1. Analyze the page content and enhance the schema with relevant data
+2. Add missing recommended fields for {schema_type} schema
+3. Improve descriptions to be more SEO-friendly and informative
+4. Extract additional metadata from the page content
+5. Ensure all URLs are absolute and valid
+6. Follow Google's structured data guidelines
+
+**CRITICAL - Response Format:**
+You MUST respond with ONLY a valid JSON object in this exact format:
+
 {{
-  "enhanced_schema": {{ ... }},
-  "improvements": ["improvement 1", "improvement 2"],
-  "recommendations": ["recommendation 1", "recommendation 2"]
+  "enhanced_schema": {{
+    "@context": "https://schema.org",
+    "@type": "{schema_type}",
+    ... (all the enhanced schema properties here - do NOT nest under another "schema" key)
+  }},
+  "improvements": [
+    "Specific improvement 1",
+    "Specific improvement 2"
+  ],
+  "recommendations": [
+    "Additional SEO recommendation 1",
+    "Additional SEO recommendation 2"
+  ]
 }}
+
+**Important Rules:**
+- The "enhanced_schema" value MUST be a direct JSON-LD schema object starting with @context and @type
+- Do NOT wrap the schema in additional "schema" or nested objects
+- Do NOT invent data - only use information from the page content provided
+- Preserve all valuable existing fields
+- Return ONLY the JSON object, no explanatory text before or after
 """
 
         try:
@@ -258,15 +304,25 @@ Respond in this JSON format:
                 temperature=0.3
             )
 
+            # Log the raw response for debugging
+            print(f"[SchemaEnhancer] Raw LLM response length: {len(response)}")
+            print(f"[SchemaEnhancer] Response preview: {response[:200]}...")
+
             result = self._parse_enhancement_response(response, {
                 "enhanced_schema": base_schema,
                 "improvements": [],
                 "recommendations": []
             })
 
+            # Validate the result structure
+            if 'enhanced_schema' in result:
+                print(f"[SchemaEnhancer] Enhanced schema @type: {result['enhanced_schema'].get('@type', 'MISSING')}")
+                print(f"[SchemaEnhancer] Enhanced schema keys: {list(result['enhanced_schema'].keys())[:5]}")
+
             return result
 
         except Exception as e:
+            print(f"[SchemaEnhancer] Error during enhancement: {type(e).__name__}: {e}")
             return {
                 "enhanced_schema": base_schema,
                 "improvements": [],
