@@ -302,14 +302,16 @@ async def get_link_recommendations_for_project(
             print(f"[API link-recommendations] Processing {len(pages)} pages")
 
             all_recommendations = []
-            for page in pages:
-                # OPTIMIZATION: Reduce max_suggestions and max_target_pages
+            for idx, page in enumerate(pages):
+                print(f"[API link-recommendations] Processing page {idx+1}/{len(pages)}: {page.url[:50]}")
+
+                # CRITICAL OPTIMIZATION: Very aggressive limits for "all pages" mode
                 recs = link_recommender.get_recommendations(
                     sync_db,
                     page.id,
                     project_id,
-                    max_suggestions=3,  # Reduced from 5
-                    max_target_pages=200  # Much smaller for "all pages" mode
+                    max_suggestions=3,  # Already reduced
+                    max_target_pages=100  # REDUCED from 200 to 100
                 )
                 for rec in recs[:2]:  # Top 2 per page (was 3)
                     all_recommendations.append({

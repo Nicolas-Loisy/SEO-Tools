@@ -60,11 +60,19 @@ class LinkRecommender:
 
         print(f"[LinkRecommender] Getting recommendations for page {page_id}, max_targets={max_target_pages}")
 
-        # Extract keywords from source page
+        # CRITICAL OPTIMIZATION: Limit text length for keyword extraction to prevent timeout
+        # KeyBERT is VERY slow on long text (uses ML embeddings)
+        text_for_keywords = source_page.text_content[:3000] if len(source_page.text_content) > 3000 else source_page.text_content
+
+        print(f"[LinkRecommender] Extracting keywords from {len(text_for_keywords)} chars (original: {len(source_page.text_content)})")
+
+        # Extract keywords from source page (REDUCED from 30 to 10 for speed)
         keywords = keyword_extractor.extract_keywords(
-            source_page.text_content,
-            top_n=30
+            text_for_keywords,
+            top_n=10  # CRITICAL: Reduced from 30 to prevent timeout
         )
+
+        print(f"[LinkRecommender] Extracted {len(keywords)} keywords")
 
         # Get pages in the same project (potential targets)
         # OPTIMIZATION: Limit to prevent timeout, prioritize by SEO score
@@ -78,12 +86,15 @@ class LinkRecommender:
             Page.seo_score.desc().nullslast()
         ).limit(max_target_pages).all()
 
-        print(f"[LinkRecommender] Found {len(target_pages)} target pages (max: {max_target_pages})")
+        print(f"[LinkRecommender] Found {len(target_pages)} target pages, starting matching...")
 
         suggestions = []
 
         # For each keyword, find relevant target pages
-        for keyword, keyword_score in keywords:
+        for idx, (keyword, keyword_score) in enumerate(keywords):
+            if idx % 3 == 0:  # Log progress every 3 keywords
+                print(f"[LinkRecommender] Processing keyword {idx+1}/{len(keywords)}")
+
             # Find pages that match this keyword
             matching_pages = self._find_matching_pages(
                 keyword,
@@ -132,6 +143,9 @@ class LinkRecommender:
 
         # Sort by score and return top suggestions
         suggestions.sort(key=lambda x: x.score, reverse=True)
+
+        print(f"[LinkRecommender] Generated {len(suggestions[:max_suggestions])} recommendations (from {len(suggestions)} total)")
+
         return suggestions[:max_suggestions]
 
     def _find_matching_pages(
