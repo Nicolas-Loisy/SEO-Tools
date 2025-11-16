@@ -5,7 +5,20 @@
 Deux endpoints de l'Internal Linking Analysis causaient des timeouts 504 :
 
 1. ✅ **GET /analysis/projects/{id}/link-graph** - CORRIGÉ
-2. ✅ **GET /analysis/projects/{id}/link-recommendations** - CORRIGÉ
+2. ✅ **GET /analysis/projects/{id}/link-recommendations** - CORRIGÉ (**NOUVELLE FIX CRITIQUE**)
+
+### ⚠️ NOUVEAU (2025-11-16 01:00) - FIX CRITIQUE KeyBERT
+
+**ROOT CAUSE IDENTIFIÉ** : KeyBERT (extraction de keywords) causait le timeout !
+- Utilise un modèle ML 'all-MiniLM-L6-v2' pour embeddings
+- **TRÈS LENT** sur texte long (30+ secondes sur article de 10,000 caractères)
+- Bloquait complètement le traitement des recommandations
+
+**FIX APPLIQUÉ** :
+- ✅ Limite texte à **3000 caractères** pour KeyBERT
+- ✅ Réduit keywords de **30 à 10** (3x plus rapide)
+- ✅ Réduit cibles de 200 à **100 en mode "all pages"**
+- ✅ Logging détaillé pour diagnostiquer les lenteurs
 
 ## ⚠️ ACTION IMMÉDIATE REQUISE
 
@@ -109,15 +122,34 @@ GET /api/v1/analysis/projects/1/link-recommendations?limit=20
 
 Après redémarrage, vous verrez ces logs dans la console backend :
 
+### Link Graph
 ```
 [API link-graph] Request for project 1, max_pages=1000
 [LinkGraph] Building graph for project 1 with 847 pages (max: 1000)
 [LinkGraph] Getting graph stats for project 1
-
-[API link-recommendations] Getting recommendations for page 123
-[LinkRecommender] Getting recommendations for page 123, max_targets=500
-[LinkRecommender] Found 500 target pages (max: 500)
 ```
+
+### Link Recommendations (NOUVEAUX LOGS APRÈS FIX KeyBERT)
+```
+[API link-recommendations] Getting recommendations for all pages (limited)
+[API link-recommendations] Processing 2 pages
+[API link-recommendations] Processing page 1/2: https://example.com/page1
+
+[LinkRecommender] Getting recommendations for page 1, max_targets=100
+[LinkRecommender] Extracting keywords from 3000 chars (original: 15234)  ← NOUVEAU
+[LinkRecommender] Extracted 10 keywords  ← NOUVEAU
+[LinkRecommender] Found 100 target pages, starting matching...
+[LinkRecommender] Processing keyword 1/10  ← NOUVEAU
+[LinkRecommender] Processing keyword 4/10  ← NOUVEAU
+[LinkRecommender] Processing keyword 7/10  ← NOUVEAU
+[LinkRecommender] Processing keyword 10/10  ← NOUVEAU
+[LinkRecommender] Generated 5 recommendations (from 12 total)  ← NOUVEAU
+
+[API link-recommendations] Processing page 2/2: https://example.com/page2
+...
+```
+
+**Si vous ne voyez PAS ces nouveaux logs**, le backend n'a pas été redémarré correctement !
 
 ## 🔍 Vérification
 
