@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api';
-import { Link as LinkIcon, TrendingUp, ExternalLink, AlertCircle, CheckCircle, RefreshCw, Search, Info, Filter } from 'lucide-react';
+import { Link as LinkIcon, TrendingUp, ExternalLink, AlertCircle, CheckCircle, RefreshCw, Search, Info, Filter, Hash } from 'lucide-react';
 
 export default function InternalLinking() {
   const { id } = useParams<{ id: string }>();
   const projectId = parseInt(id || '0');
 
-  const [activeTab, setActiveTab] = useState<'recommendations' | 'analysis'>('recommendations');
+  const [activeTab, setActiveTab] = useState<'recommendations' | 'analysis' | 'anchors'>('recommendations');
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [graphAnalysis, setGraphAnalysis] = useState<any>(null);
+  const [anchorAnalysis, setAnchorAnalysis] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,8 +23,10 @@ export default function InternalLinking() {
   useEffect(() => {
     if (activeTab === 'recommendations') {
       loadRecommendations();
-    } else {
+    } else if (activeTab === 'analysis') {
       loadGraphAnalysis();
+    } else if (activeTab === 'anchors') {
+      loadAnchorAnalysis();
     }
   }, [activeTab, projectId]);
 
@@ -48,6 +51,25 @@ export default function InternalLinking() {
       setGraphAnalysis(data);
     } catch (err: any) {
       setError(err.message || 'Failed to load graph analysis');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loadAnchorAnalysis = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/v1/analysis/projects/${projectId}/anchor-text-analysis`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      if (!response.ok) throw new Error('Failed to load anchor analysis');
+      const data = await response.json();
+      setAnchorAnalysis(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load anchor text analysis');
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +139,19 @@ export default function InternalLinking() {
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Graph Analysis
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('anchors')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'anchors'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Hash className="w-4 h-4" />
+              Anchor Text
             </div>
           </button>
         </nav>
@@ -548,6 +583,163 @@ export default function InternalLinking() {
                     <div className="text-right">
                       <div className="text-xs text-gray-500">SEO Score</div>
                       <div className="text-lg font-bold text-green-600">{Math.round(page.seo_score)}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Anchor Text Analysis Tab */}
+      {!isLoading && activeTab === 'anchors' && anchorAnalysis && (
+        <div className="space-y-6">
+          {/* Recommendations */}
+          {anchorAnalysis.recommendations && anchorAnalysis.recommendations.length > 0 && (
+            <div className="space-y-3">
+              {anchorAnalysis.recommendations.map((rec: any, idx: number) => (
+                <div
+                  key={idx}
+                  className={`card border-2 ${
+                    rec.severity === 'success'
+                      ? 'bg-green-50 border-green-200'
+                      : rec.severity === 'high'
+                      ? 'bg-red-50 border-red-200'
+                      : rec.severity === 'medium'
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-blue-50 border-blue-200'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {rec.severity === 'success' ? (
+                      <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{rec.title}</h3>
+                      <p className="text-sm text-gray-700">{rec.message}</p>
+                      {rec.examples && rec.examples.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-xs font-medium text-gray-600 mb-1">Examples:</p>
+                          <div className="flex flex-wrap gap-2">
+                            {rec.examples.map((ex: string, i: number) => (
+                              <span key={i} className="px-2 py-1 bg-white text-xs rounded border border-gray-300">
+                                "{ex}"
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Statistics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="card">
+              <div className="text-sm text-gray-600 mb-1">Total Links</div>
+              <div className="text-3xl font-bold text-gray-900">{anchorAnalysis.stats.total_links}</div>
+            </div>
+            <div className="card">
+              <div className="text-sm text-gray-600 mb-1">With Anchor Text</div>
+              <div className="text-3xl font-bold text-green-600">{anchorAnalysis.stats.links_with_anchor_text}</div>
+              <div className="text-xs text-gray-500 mt-1">
+                {Math.round((anchorAnalysis.stats.links_with_anchor_text / anchorAnalysis.stats.total_links) * 100)}%
+              </div>
+            </div>
+            <div className="card">
+              <div className="text-sm text-gray-600 mb-1">Generic Anchors</div>
+              <div className="text-3xl font-bold text-red-600">{anchorAnalysis.stats.generic_anchors_count}</div>
+              <div className="text-xs text-gray-500 mt-1">{anchorAnalysis.stats.generic_anchors_percentage}%</div>
+            </div>
+            <div className="card">
+              <div className="text-sm text-gray-600 mb-1">Unique Anchors</div>
+              <div className="text-3xl font-bold text-blue-600">{anchorAnalysis.stats.unique_anchor_texts}</div>
+              <div className="text-xs text-gray-500 mt-1">Avg: {anchorAnalysis.stats.average_anchor_length} chars</div>
+            </div>
+          </div>
+
+          {/* Top Anchor Texts */}
+          {anchorAnalysis.stats.top_anchor_texts && anchorAnalysis.stats.top_anchor_texts.length > 0 && (
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Used Anchor Texts</h3>
+              <div className="space-y-2">
+                {anchorAnalysis.stats.top_anchor_texts.slice(0, 15).map((anchor: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-1">
+                      <span className="font-medium text-gray-900">"{anchor.anchor_text}"</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm text-gray-600">{anchor.count} uses</span>
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div
+                          className="bg-primary-600 h-2 rounded-full"
+                          style={{ width: `${anchor.percentage}%` }}
+                        />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700 w-12 text-right">{anchor.percentage}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Generic Anchors */}
+          {anchorAnalysis.stats.generic_anchors && anchorAnalysis.stats.generic_anchors.length > 0 && (
+            <div className="card border-2 border-yellow-200 bg-yellow-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-yellow-600" />
+                Generic Anchor Texts (Avoid These)
+              </h3>
+              <p className="text-sm text-gray-700 mb-4">
+                These generic anchor texts are not SEO-friendly. Use descriptive text that includes keywords instead.
+              </p>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {anchorAnalysis.stats.generic_anchors.map((anchor: any, idx: number) => (
+                  <div key={idx} className="p-2 bg-white rounded border border-yellow-300">
+                    <div className="text-sm font-medium text-gray-900">"{anchor.anchor_text}"</div>
+                    <div className="text-xs text-gray-600">{anchor.count} uses ({anchor.percentage}%)</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Over-Optimized Anchors */}
+          {anchorAnalysis.stats.over_optimized_anchors && anchorAnalysis.stats.over_optimized_anchors.length > 0 && (
+            <div className="card border-2 border-red-200 bg-red-50">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-600" />
+                Over-Optimized Anchor Texts
+              </h3>
+              <p className="text-sm text-gray-700 mb-4">
+                These anchor texts are used too frequently, which may appear unnatural. Vary your anchor text for better SEO.
+              </p>
+              <div className="space-y-2">
+                {anchorAnalysis.stats.over_optimized_anchors.map((anchor: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className={`p-3 bg-white rounded-lg border-2 ${
+                      anchor.severity === 'high' ? 'border-red-400' : 'border-yellow-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <span className="font-medium text-gray-900">"{anchor.anchor_text}"</span>
+                        <span className="ml-2 text-xs px-2 py-1 rounded bg-red-100 text-red-800">
+                          {anchor.severity === 'high' ? 'High Risk' : 'Medium Risk'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600">{anchor.count} uses</div>
+                        <div className="text-lg font-bold text-red-600">{anchor.percentage}%</div>
+                      </div>
                     </div>
                   </div>
                 ))}

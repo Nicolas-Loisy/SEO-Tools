@@ -469,6 +469,75 @@ async def export_link_graph_visualization(
         sync_db.close()
 
 
+@router.get("/projects/{project_id}/anchor-text-analysis")
+async def get_anchor_text_analysis(
+    project_id: int,
+    max_pages: int = 1000,
+    tenant: Tenant = Depends(get_current_tenant),
+    db: AsyncSession = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Analyze anchor text distribution and quality for a project.
+
+    Provides statistics on:
+    - Generic anchor texts ("click here", etc.)
+    - Over-optimized anchors (same text used too many times)
+    - Anchor text distribution
+    - Recommendations for improvement
+
+    Args:
+        project_id: Project ID
+        max_pages: Maximum pages to analyze (default 1000)
+        tenant: Current tenant
+        db: Database session
+
+    Returns:
+        Anchor text analysis statistics and recommendations
+    """
+    from app.services.anchor_text_analyzer import anchor_text_analyzer
+    from app.core.database import SessionLocal
+
+    print(f"[API anchor-text-analysis] Request for project {project_id}, max_pages={max_pages}")
+
+    # Verify project belongs to tenant
+    project_repo = ProjectRepository(db)
+    project = await project_repo.get_by_id(project_id)
+
+    if not project or project.tenant_id != tenant.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Project not found",
+        )
+
+    # Get sync session
+    sync_db = SessionLocal()
+
+    try:
+        # Get anchor text statistics
+        stats = anchor_text_analyzer.get_anchor_text_stats(
+            sync_db,
+            project_id,
+            max_pages=max_pages
+        )
+
+        # Get recommendations
+        recommendations = anchor_text_analyzer.get_anchor_text_recommendations(
+            sync_db,
+            project_id,
+            max_pages=max_pages
+        )
+
+        print(f"[API anchor-text-analysis] Found {stats['total_links']} links, {stats['generic_anchors_count']} generic anchors")
+
+        return {
+            "project_id": project_id,
+            "stats": stats,
+            "recommendations": recommendations
+        }
+    finally:
+        sync_db.close()
+
+
 @router.get("/projects/{project_id}/pages/{page_id}/schema/detect")
 async def detect_schema_types(
     project_id: int,
