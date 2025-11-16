@@ -16,6 +16,7 @@ export default function InternalLinking() {
   // Filter states
   const [searchFilter, setSearchFilter] = useState('');
   const [minScoreFilter, setMinScoreFilter] = useState(0);
+  const [maxScoreFilter, setMaxScoreFilter] = useState(100);
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
@@ -61,8 +62,9 @@ export default function InternalLinking() {
 
   // Filter recommendations based on search and score
   const filteredRecommendations = recommendations.filter((rec) => {
-    // Score filter
+    // Score filter (min and max)
     if (rec.score < minScoreFilter / 100) return false;
+    if (rec.score > maxScoreFilter / 100) return false;
 
     // Search filter (search in keyword, target title, source url, target url)
     if (searchFilter.trim()) {
@@ -158,7 +160,7 @@ export default function InternalLinking() {
                 <div className="flex items-center gap-4">
                   <p className="text-sm text-gray-600">
                     Found <span className="font-semibold">{recommendations.length}</span> link opportunities
-                    {(searchFilter || minScoreFilter > 0) && (
+                    {(searchFilter || minScoreFilter > 0 || maxScoreFilter < 100) && (
                       <span className="ml-2 text-primary-600">
                         ({filteredRecommendations.length} filtered)
                       </span>
@@ -190,7 +192,7 @@ export default function InternalLinking() {
                     <Filter className="w-5 h-5 text-gray-700" />
                     <h3 className="text-lg font-semibold text-gray-900">Filters</h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Search Filter */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -208,7 +210,7 @@ export default function InternalLinking() {
                       </div>
                     </div>
 
-                    {/* Score Filter */}
+                    {/* Minimum Score Filter */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Minimum Score: {minScoreFilter}%
@@ -228,15 +230,37 @@ export default function InternalLinking() {
                         <span>100%</span>
                       </div>
                     </div>
+
+                    {/* Maximum Score Filter */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Maximum Score: {maxScoreFilter}%
+                      </label>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={maxScoreFilter}
+                        onChange={(e) => setMaxScoreFilter(parseInt(e.target.value))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-primary-600"
+                      />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0%</span>
+                        <span>50%</span>
+                        <span>100%</span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Reset Filters */}
-                  {(searchFilter || minScoreFilter > 0) && (
+                  {(searchFilter || minScoreFilter > 0 || maxScoreFilter < 100) && (
                     <div className="mt-4 pt-4 border-t border-gray-300">
                       <button
                         onClick={() => {
                           setSearchFilter('');
                           setMinScoreFilter(0);
+                          setMaxScoreFilter(100);
                         }}
                         className="text-sm text-primary-600 hover:text-primary-700 font-medium"
                       >
@@ -252,12 +276,13 @@ export default function InternalLinking() {
                   <Filter className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">No recommendations match your filters</h3>
                   <p className="text-gray-600">
-                    Try adjusting your search terms or minimum score.
+                    Try adjusting your search terms or score range.
                   </p>
                   <button
                     onClick={() => {
                       setSearchFilter('');
                       setMinScoreFilter(0);
+                      setMaxScoreFilter(100);
                     }}
                     className="mt-4 btn btn-secondary"
                   >
