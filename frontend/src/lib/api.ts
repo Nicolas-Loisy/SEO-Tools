@@ -448,9 +448,6 @@ class APIClient {
     );
     return data;
   }
-}
-
-export const api = new APIClient();
 
   // Site Architecture Generation
   async generateSiteArchitecture(params: {
