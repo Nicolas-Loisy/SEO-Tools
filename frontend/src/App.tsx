@@ -12,6 +12,7 @@ import Search from "@/pages/Search";
 import InternalLinking from "@/pages/InternalLinking";
 import StructuredData from "@/pages/StructuredData";
 import SiteArchitectureGenerator from "@/pages/SiteArchitectureGenerator";
+import SEOContentGenerator from "@/pages/SEOContentGenerator";
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -50,6 +51,7 @@ function App() {
         <Route path="/search" element={<Search />} />
         <Route path="/usage" element={<Usage />} />
         <Route path="/site-architecture" element={<SiteArchitectureGenerator />} />
+        <Route path="/content-generator" element={<SEOContentGenerator />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderKanban, Search, BarChart3, LogOut, TreePine } from 'lucide-react';
+import { Home, FolderKanban, Search, BarChart3, LogOut, TreePine, FileText } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface LayoutProps {
@@ -19,6 +19,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
     { name: 'Site Architecture', href: '/site-architecture', icon: TreePine },
+    { name: 'Content Generator', href: '/content-generator', icon: FileText },
     { name: 'Search', href: '/search', icon: Search },
     { name: 'Usage', href: '/usage', icon: BarChart3 },
   ];
