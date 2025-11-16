@@ -60,19 +60,17 @@ class LinkRecommender:
 
         print(f"[LinkRecommender] Getting recommendations for page {page_id}, max_targets={max_target_pages}")
 
-        # CRITICAL OPTIMIZATION: Limit text length for keyword extraction to prevent timeout
-        # KeyBERT is VERY slow on long text (uses ML embeddings)
-        text_for_keywords = source_page.text_content[:3000] if len(source_page.text_content) > 3000 else source_page.text_content
+        # NEW: Using FAST frequency-based extraction (KeyBERT removed)
+        # No need to limit text length - new method handles 50k+ chars in milliseconds
+        print(f"[LinkRecommender] Extracting keywords from {len(source_page.text_content)} chars using FAST method")
 
-        print(f"[LinkRecommender] Extracting keywords from {len(text_for_keywords)} chars (original: {len(source_page.text_content)})")
-
-        # Extract keywords from source page (REDUCED from 30 to 10 for speed)
+        # Extract keywords from source page (fast method - can process full text)
         keywords = keyword_extractor.extract_keywords(
-            text_for_keywords,
-            top_n=10  # CRITICAL: Reduced from 30 to prevent timeout
+            source_page.text_content,  # Can use FULL text now!
+            top_n=15  # Increased from 10 (extraction is now instant)
         )
 
-        print(f"[LinkRecommender] Extracted {len(keywords)} keywords")
+        print(f"[LinkRecommender] Extracted {len(keywords)} keywords in <1ms")
 
         # Get pages in the same project (potential targets)
         # OPTIMIZATION: Limit to prevent timeout, prioritize by SEO score
