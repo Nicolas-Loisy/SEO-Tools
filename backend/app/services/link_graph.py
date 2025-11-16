@@ -7,7 +7,7 @@ from neo4j import GraphDatabase
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.models.page import Page
+from app.models.page import Page, Link
 
 
 @dataclass
@@ -98,23 +98,28 @@ class LinkGraphService:
                 word_count=page.word_count
             )
 
-        # Add edges (internal links)
-        # Note: We need to parse outgoing_links from pages
-        # For now, we'll use a simple approach based on URL matching
-        url_to_id = {page.url: page.id for page in pages}
+        # Add edges (internal links) from the database
+        # Get all page IDs in the graph
+        page_ids = [page.id for page in pages]
+        page_id_set = set(page_ids)
 
-        for page in pages:
-            # Get all pages this page links to
-            # We'll need to query from the database or parse from rendered_html
-            # For simplicity, let's use internal_links_count as a proxy
-            # In a real implementation, we'd parse the HTML or use a Links table
+        # Query all internal links between these pages
+        links = db.query(Link).filter(
+            Link.source_page_id.in_(page_ids),
+            Link.target_page_id.in_(page_ids),
+            Link.is_internal == True
+        ).all()
 
-            # For now, create synthetic edges based on depth hierarchy
-            # Pages at depth N typically link to pages at depth N+1
-            if page.depth < 5:  # Reasonable limit
-                targets = [p for p in pages if p.depth == page.depth + 1]
-                for target in targets[:5]:  # Limit to 5 links per page
-                    G.add_edge(page.id, target.id)
+        print(f"[LinkGraph] Found {len(links)} real internal links between {len(pages)} pages")
+
+        # Add edges to the graph with anchor text as edge attribute
+        for link in links:
+            G.add_edge(
+                link.source_page_id,
+                link.target_page_id,
+                anchor_text=link.anchor_text,
+                rel=link.rel
+            )
 
         return G
 
@@ -271,10 +276,12 @@ class LinkGraphService:
             })
 
         edges = []
-        for source, target in G.edges():
+        for source, target, edge_data in G.edges(data=True):
             edges.append({
                 "source": source,
-                "target": target
+                "target": target,
+                "anchor_text": edge_data.get("anchor_text", ""),
+                "rel": edge_data.get("rel", "")
             })
 
         return {
