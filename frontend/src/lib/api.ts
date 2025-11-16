@@ -314,6 +314,49 @@ class APIClient {
     return data;
   }
 
+  async getAnchorTextAnalysis(projectId: number, maxPages: number = 1000): Promise<{
+    project_id: number;
+    stats: {
+      total_links: number;
+      links_with_anchor_text: number;
+      links_without_anchor_text: number;
+      generic_anchors_count: number;
+      generic_anchors_percentage: number;
+      top_anchor_texts: Array<{
+        anchor_text: string;
+        count: number;
+        percentage: number;
+      }>;
+      generic_anchors: Array<{
+        anchor_text: string;
+        count: number;
+        percentage: number;
+      }>;
+      over_optimized_anchors: Array<{
+        anchor_text: string;
+        count: number;
+        percentage: number;
+        severity: string;
+      }>;
+      average_anchor_length: number;
+      unique_anchor_texts: number;
+    };
+    recommendations: Array<{
+      type: string;
+      severity: string;
+      title: string;
+      message: string;
+      count?: number;
+      examples?: string[];
+      average_length?: number;
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/anchor-text-analysis`, {
+      params: { max_pages: maxPages }
+    });
+    return data;
+  }
+
   // Structured Data / Schema.org
   async detectSchemaTypes(projectId: number, pageId: number): Promise<{
     page_id: number;

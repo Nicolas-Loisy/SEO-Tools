@@ -219,7 +219,7 @@ class FastCrawler(BaseCrawler):
         hreflang_tags = soup.find_all("link", attrs={"rel": "alternate", "hreflang": True})
         hreflang = {tag.get("hreflang"): tag.get("href") for tag in hreflang_tags} if hreflang_tags else None
 
-        # Extract outgoing links
+        # Extract outgoing links with anchor text
         outgoing_links = []
         base_domain = urlparse(url).netloc
 
@@ -234,7 +234,12 @@ class FastCrawler(BaseCrawler):
 
             # Only internal links
             if parsed.netloc == base_domain:
-                outgoing_links.append(absolute_url)
+                # Extract anchor text (strip whitespace and newlines)
+                anchor_text = link.get_text(strip=True)
+                outgoing_links.append({
+                    "url": absolute_url,
+                    "anchor_text": anchor_text if anchor_text else None
+                })
 
         # Generate hashes
         url_hash = hashlib.sha256(url.encode()).hexdigest()

@@ -150,10 +150,86 @@ def crawl_site(job_id: int) -> dict:
 
             db.flush()
 
-            # Save links
+            # Track outgoing links for later processing
             total_links += len(crawled_page.outgoing_links)
 
+        # Commit all pages first
         db.commit()
+
+        # Now create Link objects - we need all pages to exist first
+        print(f"[CrawlerTask] Creating {total_links} link relationships...")
+
+        # Create URL to page_id mapping
+        url_to_page_id = {
+            p.url: p.id for p in db.query(Page).filter(
+                Page.project_id == project.id,
+                Page.crawl_job_id == job.id
+            ).all()
+        }
+
+        links_created = 0
+        links_skipped = 0
+
+        from app.models.page import Link
+
+        # Track links already added in this session to avoid duplicates
+        # A page can have multiple <a> tags pointing to the same URL
+        links_in_session = set()
+
+        for crawled_page in crawl_result.pages:
+            # Get source page ID
+            source_page_id = url_to_page_id.get(crawled_page.url)
+            if not source_page_id:
+                continue
+
+            # Create links to each outgoing URL with anchor text
+            for link_data in crawled_page.outgoing_links:
+                # Extract URL and anchor text from dict
+                target_url = link_data.get("url")
+                anchor_text = link_data.get("anchor_text")
+
+                # Get target page ID
+                target_page_id = url_to_page_id.get(target_url)
+
+                if not target_page_id:
+                    # Target page not in this crawl (external or not crawled yet)
+                    links_skipped += 1
+                    continue
+
+                # Create unique key for this link
+                link_key = (source_page_id, target_page_id)
+
+                # Skip if we already processed this link in this session
+                if link_key in links_in_session:
+                    continue
+
+                # Check if link already exists in database
+                existing_link = db.query(Link).filter(
+                    Link.source_page_id == source_page_id,
+                    Link.target_page_id == target_page_id
+                ).first()
+
+                if existing_link:
+                    # Link already exists, update anchor text if provided
+                    if anchor_text and not existing_link.anchor_text:
+                        existing_link.anchor_text = anchor_text
+                    continue
+
+                # Create new Link object with anchor text
+                link = Link(
+                    source_page_id=source_page_id,
+                    target_page_id=target_page_id,
+                    anchor_text=anchor_text,  # Now extracted from HTML!
+                    rel=None,  # TODO: Extract rel attribute
+                    is_internal=True  # These are internal links from crawler
+                )
+
+                db.add(link)
+                links_in_session.add(link_key)
+                links_created += 1
+
+        db.commit()
+        print(f"[CrawlerTask] Created {links_created} links, skipped {links_skipped} (targets not found)")
 
         # Index pages to Meilisearch for full-text search
         try:
