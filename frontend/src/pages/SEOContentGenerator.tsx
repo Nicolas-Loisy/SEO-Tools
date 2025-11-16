@@ -48,6 +48,23 @@ export default function SEOContentGenerator() {
       }
     } catch (err: any) {
       console.error('Failed to load templates:', err);
+      // Set default templates if API call fails
+      setTemplates({
+        page_types: [
+          { value: 'article', label: 'Article', description: 'Blog post or informational article' },
+          { value: 'homepage', label: 'Homepage', description: 'Main landing page' },
+          { value: 'product', label: 'Product', description: 'Product page' },
+          { value: 'category', label: 'Category', description: 'Category page' },
+          { value: 'landing_page', label: 'Landing Page', description: 'Conversion-focused page' },
+        ],
+        tones: [
+          { value: 'professional', label: 'Professional' },
+          { value: 'casual', label: 'Casual' },
+          { value: 'friendly', label: 'Friendly' },
+          { value: 'expert', label: 'Expert' },
+        ]
+      });
+      setError('Could not load templates from server. Using defaults. Make sure backend is running.');
     }
   };
 
