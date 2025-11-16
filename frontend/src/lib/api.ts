@@ -448,6 +448,136 @@ class APIClient {
     );
     return data;
   }
+
+  // Site Architecture Generation
+  async generateSiteArchitecture(params: {
+    topic: string;
+    language?: string;
+    country?: string;
+    max_keywords?: number;
+    num_clusters?: number;
+    depth?: number;
+    provider?: string;
+  }): Promise<{
+    topic: string;
+    language: string;
+    total_keywords: number;
+    num_clusters: number;
+    depth: number;
+    tree: {
+      name: string;
+      slug: string;
+      keyword: string;
+      title: string;
+      meta_description: string;
+      priority: string;
+      level: number;
+      target_word_count: number;
+      children?: any[];
+    };
+    clusters: Array<{
+      id: number;
+      keywords: string[];
+      centroid: string;
+    }>;
+  }> {
+    const { data } = await this.client.post('/analysis/generate-site-architecture', null, {
+      params: {
+        topic: params.topic,
+        language: params.language || 'en',
+        country: params.country || 'us',
+        max_keywords: params.max_keywords || 100,
+        num_clusters: params.num_clusters || 5,
+        depth: params.depth || 3,
+        provider: params.provider || 'openai',
+      }
+    });
+    return data;
+  }
+
+  // SEO Content Generation
+  async generateSEOContent(params: {
+    keyword: string;
+    page_type: string;
+    tone?: string;
+    length?: number;
+    language?: string;
+    context?: string;
+    competitor_urls?: string[];
+    provider?: string;
+  }): Promise<any> {
+    const { data } = await this.client.post('/content/generate', {
+      keyword: params.keyword,
+      page_type: params.page_type,
+      tone: params.tone || 'professional',
+      length: params.length || 1000,
+      language: params.language || 'en',
+      context: params.context || null,
+      competitor_urls: params.competitor_urls || null,
+      provider: params.provider || 'openai',
+    });
+    return data;
+  }
+
+  async optimizeSEOContent(params: {
+    content: string;
+    keyword: string;
+    page_type: string;
+    language?: string;
+    provider?: string;
+  }): Promise<any> {
+    const { data } = await this.client.post('/content/optimize', {
+      content: params.content,
+      keyword: params.keyword,
+      page_type: params.page_type,
+      language: params.language || 'en',
+      provider: params.provider || 'openai',
+    });
+    return data;
+  }
+
+  async validateSEOContent(params: {
+    content: string;
+    keyword: string;
+    meta_title?: string;
+    meta_description?: string;
+    min_words?: number;
+    max_words?: number;
+  }): Promise<{
+    score: number;
+    issues: Array<{
+      type: string;
+      severity: string;
+      message: string;
+    }>;
+    suggestions: string[];
+    metrics: Record<string, any>;
+  }> {
+    const { data } = await this.client.post('/content/validate', {
+      content: params.content,
+      keyword: params.keyword,
+      meta_title: params.meta_title || null,
+      meta_description: params.meta_description || null,
+      min_words: params.min_words || 300,
+      max_words: params.max_words || 2500,
+    });
+    return data;
+  }
+
+  async getContentTemplates(): Promise<{
+    page_types: Array<{
+      value: string;
+      label: string;
+      description: string;
+    }>;
+    tones: Array<{
+      value: string;
+      label: string;
+    }>;
+  }> {
+    const { data } = await this.client.get('/content/templates');
+    return data;
+  }
 }
 
 export const api = new APIClient();

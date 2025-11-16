@@ -888,3 +888,87 @@ async def enhance_jsonld_with_ai(
 
     finally:
         sync_db.close()
+
+
+@router.post("/generate-site-architecture")
+async def generate_site_architecture(
+    topic: str,
+    language: str = "en",
+    country: str = "us",
+    max_keywords: int = 100,
+    num_clusters: int = 5,
+    depth: int = 3,
+    provider: str = "openai",
+    tenant: Tenant = Depends(get_current_tenant),
+) -> Dict[str, Any]:
+    """
+    Generate SEO-optimized site architecture using:
+    1. Google Autocomplete for keyword research (free)
+    2. K-means clustering for semantic grouping
+    3. LLM for hierarchical structure generation
+
+    This endpoint doesn't require a project and can be used for planning new sites.
+
+    Args:
+        topic: Main topic/keyword for the site
+        language: Language code (en, fr, es, etc.)
+        country: Country code (us, fr, uk, etc.)
+        max_keywords: Maximum keywords to gather (default: 100)
+        num_clusters: Number of semantic clusters (default: 5)
+        depth: Tree depth (1-5, default: 3)
+        provider: LLM provider for embeddings and generation (default: openai)
+        tenant: Current tenant (for quota tracking)
+
+    Returns:
+        Complete site architecture with tree structure and cluster information
+    """
+    from app.services.architecture_generator import architecture_generator
+
+    print(f"[API generate-architecture] Request for topic '{topic}', language={language}, depth={depth}")
+
+    # Validate inputs
+    if not topic or len(topic) < 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Topic must be at least 2 characters"
+        )
+
+    if depth < 1 or depth > 5:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Depth must be between 1 and 5"
+        )
+
+    if num_clusters < 2 or num_clusters > 20:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Number of clusters must be between 2 and 20"
+        )
+
+    try:
+        # Generate architecture
+        result = await architecture_generator.generate_architecture(
+            topic=topic,
+            language=language,
+            country=country,
+            max_keywords=max_keywords,
+            num_clusters=num_clusters,
+            depth=depth,
+            provider=provider,
+        )
+
+        print(f"[API generate-architecture] Generated architecture with {result['total_keywords']} keywords, {result['num_clusters']} clusters")
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"[API generate-architecture] Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate architecture: {str(e)}"
+        )

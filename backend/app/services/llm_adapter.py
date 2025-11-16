@@ -193,3 +193,84 @@ class LLMAdapter:
             List of model names
         """
         return LLMFactory.get_provider_models(provider)
+
+    async def generate_text(
+        self,
+        prompt: str,
+        provider: str = "openai",
+        system_prompt: Optional[str] = None,
+        max_tokens: int = 1000,
+        temperature: float = 0.7,
+        model: Optional[str] = None
+    ) -> str:
+        """
+        Alias for generate() method for clarity.
+
+        Args:
+            prompt: User prompt to generate from
+            provider: LLM provider to use
+            system_prompt: Optional system instructions
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            model: Optional specific model to use
+
+        Returns:
+            Generated text content
+        """
+        return await self.generate(
+            prompt=prompt,
+            provider=provider,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            model=model
+        )
+
+    async def generate_embedding(
+        self,
+        text: str,
+        provider: str = "openai",
+        model: Optional[str] = None
+    ) -> list[float]:
+        """
+        Generate text embedding vector.
+
+        Args:
+            text: Text to embed
+            provider: LLM provider (currently only OpenAI supported)
+            model: Optional embedding model (default: text-embedding-3-small)
+
+        Returns:
+            Embedding vector as list of floats
+
+        Raises:
+            ValueError: If provider doesn't support embeddings
+        """
+        if provider.lower() != "openai":
+            raise ValueError(
+                f"Embeddings currently only supported for OpenAI. "
+                f"Provider '{provider}' not supported."
+            )
+
+        # Use OpenAI embeddings API
+        import openai
+
+        api_key = self._get_api_key(provider)
+        client = openai.AsyncOpenAI(api_key=api_key)
+
+        # Use efficient small model by default
+        embedding_model = model or "text-embedding-3-small"
+
+        response = await client.embeddings.create(
+            input=text,
+            model=embedding_model
+        )
+
+        # Extract embedding vector
+        embedding = response.data[0].embedding
+
+        return embedding
+
+
+# Singleton instance
+llm_adapter = LLMAdapter()

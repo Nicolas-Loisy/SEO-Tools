@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.core.database import get_db
 from app.models.page import Page
@@ -265,3 +265,206 @@ def _check_provider_availability(provider: str) -> bool:
         return True
     except HTTPException:
         return False
+
+
+# SEO Content Generation Endpoints
+
+
+class GenerateContentRequest(BaseModel):
+    """Request to generate SEO content."""
+    keyword: str = Field(..., description="Target keyword")
+    page_type: str = Field(..., description="Page type (homepage, article, product, etc.)")
+    tone: str = Field("professional", description="Content tone")
+    length: int = Field(1000, ge=300, le=5000, description="Target word count")
+    language: str = Field("en", description="Content language")
+    context: Optional[str] = Field(None, description="Additional context")
+    competitor_urls: Optional[List[str]] = Field(None, description="Competitor URLs for analysis")
+    provider: str = Field("openai", description="LLM provider")
+
+
+class OptimizeContentRequest(BaseModel):
+    """Request to optimize existing content."""
+    content: str = Field(..., description="Content to optimize")
+    keyword: str = Field(..., description="Target keyword")
+    page_type: str = Field(..., description="Page type")
+    language: str = Field("en", description="Content language")
+    provider: str = Field("openai", description="LLM provider")
+
+
+class ValidateContentRequest(BaseModel):
+    """Request to validate content."""
+    content: str = Field(..., description="Content to validate")
+    keyword: str = Field(..., description="Target keyword")
+    meta_title: Optional[str] = Field(None, description="Meta title")
+    meta_description: Optional[str] = Field(None, description="Meta description")
+    min_words: int = Field(300, description="Minimum word count")
+    max_words: int = Field(2500, description="Maximum word count")
+
+
+@router.post("/generate")
+async def generate_seo_content(
+    request: GenerateContentRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+) -> Dict[str, Any]:
+    """
+    Generate complete SEO-optimized content.
+
+    Creates structured content with proper headings, meta tags,
+    and optimized keyword usage based on the specified page type.
+
+    Args:
+        request: Content generation request
+        tenant: Current tenant
+
+    Returns:
+        Generated content with structure and metadata
+    """
+    from app.services.seo_content_generator import seo_content_generator
+
+    print(f"[API generate-content] Request for keyword '{request.keyword}', type={request.page_type}")
+
+    try:
+        content = await seo_content_generator.generate_content(
+            keyword=request.keyword,
+            page_type=request.page_type,
+            tone=request.tone,
+            length=request.length,
+            language=request.language,
+            context=request.context,
+            competitor_urls=request.competitor_urls or [],
+            provider=request.provider
+        )
+
+        print(f"[API generate-content] Content generated successfully")
+
+        return content
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"[API generate-content] Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate content: {str(e)}"
+        )
+
+
+@router.post("/optimize")
+async def optimize_seo_content(
+    request: OptimizeContentRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+) -> Dict[str, Any]:
+    """
+    Optimize existing content for SEO.
+
+    Analyzes and improves content for better search engine visibility
+    while preserving the core message.
+
+    Args:
+        request: Content optimization request
+        tenant: Current tenant
+
+    Returns:
+        Optimized content with improvements and suggestions
+    """
+    from app.services.seo_content_generator import seo_content_generator
+
+    print(f"[API optimize-content] Request for keyword '{request.keyword}'")
+
+    try:
+        result = await seo_content_generator.optimize_content(
+            content=request.content,
+            keyword=request.keyword,
+            page_type=request.page_type,
+            language=request.language,
+            provider=request.provider
+        )
+
+        print(f"[API optimize-content] Content optimized successfully")
+
+        return result
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        print(f"[API optimize-content] Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to optimize content: {str(e)}"
+        )
+
+
+@router.post("/validate")
+async def validate_seo_content(
+    request: ValidateContentRequest,
+    tenant: Tenant = Depends(get_current_tenant),
+) -> Dict[str, Any]:
+    """
+    Validate content for SEO best practices.
+
+    Checks keyword usage, readability, structure, and provides
+    an SEO score with actionable suggestions.
+
+    Args:
+        request: Content validation request
+        tenant: Current tenant
+
+    Returns:
+        Validation result with score and suggestions
+    """
+    from app.services.content_validator import content_validator
+
+    print(f"[API validate-content] Request for keyword '{request.keyword}'")
+
+    try:
+        result = content_validator.validate_content(
+            content=request.content,
+            keyword=request.keyword,
+            meta_title=request.meta_title,
+            meta_description=request.meta_description,
+            min_words=request.min_words,
+            max_words=request.max_words
+        )
+
+        return {
+            "score": result.score,
+            "issues": result.issues,
+            "suggestions": result.suggestions,
+            "metrics": result.metrics
+        }
+
+    except Exception as e:
+        print(f"[API validate-content] Error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to validate content: {str(e)}"
+        )
+
+
+@router.get("/templates")
+async def list_content_templates(
+    tenant: Tenant = Depends(get_current_tenant),
+) -> Dict[str, Any]:
+    """
+    List available content templates.
+
+    Returns information about available page types and content tones.
+
+    Args:
+        tenant: Current tenant
+
+    Returns:
+        Available templates and options
+    """
+    from app.services.content_templates import content_template_service
+
+    return {
+        "page_types": content_template_service.get_available_page_types(),
+        "tones": content_template_service.get_available_tones()
+    }
