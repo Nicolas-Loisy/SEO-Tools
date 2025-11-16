@@ -234,6 +234,177 @@ class APIClient {
     const { data } = await this.client.get('/search/stats');
     return data;
   }
+
+  // Internal Linking Analysis
+  async getLinkRecommendations(
+    projectId: number,
+    pageId?: number,
+    limit: number = 20
+  ): Promise<{
+    project_id: number;
+    page_id?: number;
+    recommendations: Array<{
+      source_page_id?: number;
+      source_url?: string;
+      target_page_id: number;
+      target_url: string;
+      target_title: string;
+      keyword: string;
+      context: string;
+      score: number;
+      reason: string;
+    }>;
+    count: number;
+  }> {
+    const params: any = { limit };
+    if (pageId) params.page_id = pageId;
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-recommendations`, { params });
+    return data;
+  }
+
+  async getLinkGraphAnalysis(projectId: number): Promise<{
+    project_id: number;
+    total_pages: number;
+    total_links: number;
+    avg_links_per_page: number;
+    orphan_pages: number;
+    hub_pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      seo_score: number;
+      pagerank: number;
+      in_degree: number;
+      out_degree: number;
+    }>;
+    authority_pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      seo_score: number;
+      pagerank: number;
+      in_degree: number;
+      out_degree: number;
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-graph`);
+    return data;
+  }
+
+  async exportLinkGraph(projectId: number): Promise<{
+    project_id: number;
+    graph: {
+      nodes: Array<{
+        id: number;
+        label: string;
+        url: string;
+        seo_score: number;
+        depth: number;
+        pagerank: number;
+        in_degree: number;
+        out_degree: number;
+      }>;
+      edges: Array<{
+        source: number;
+        target: number;
+      }>;
+    };
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/link-graph/export`);
+    return data;
+  }
+
+  // Structured Data / Schema.org
+  async detectSchemaTypes(projectId: number, pageId: number): Promise<{
+    page_id: number;
+    url: string;
+    detected_types: Array<{
+      type: string;
+      priority: number;
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/pages/${pageId}/schema/detect`);
+    return data;
+  }
+
+  async generateJSONLD(
+    projectId: number,
+    pageId: number,
+    schemaType: string,
+    additionalData?: Record<string, any>
+  ): Promise<{
+    page_id: number;
+    schema_type: string;
+    schema: Record<string, any>;
+    html: string;
+    validation: {
+      valid: boolean;
+      errors: string[];
+      warnings: string[];
+    };
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/generate`,
+      { additional_data: additionalData },
+      { params: { schema_type: schemaType } }
+    );
+    return data;
+  }
+
+  async validateJSONLD(
+    projectId: number,
+    pageId: number,
+    schema: Record<string, any>
+  ): Promise<{
+    page_id: number;
+    validation: {
+      valid: boolean;
+      errors: string[];
+      warnings: string[];
+    };
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/validate`,
+      { schema }
+    );
+    return data;
+  }
+
+  async bulkDetectSchemas(projectId: number, limit: number = 50): Promise<{
+    project_id: number;
+    total_pages: number;
+    pages: Array<{
+      page_id: number;
+      url: string;
+      title: string;
+      detected_types: string[];
+    }>;
+  }> {
+    const { data } = await this.client.get(`/analysis/projects/${projectId}/schema/bulk-detect`, {
+      params: { limit }
+    });
+    return data;
+  }
+
+  async enhanceSchemaWithAI(
+    projectId: number,
+    pageId: number,
+    schema: Record<string, any>,
+    provider: string = 'openai'
+  ): Promise<{
+    page_id: number;
+    enhanced_schema: Record<string, any>;
+    improvements: string[];
+    recommendations: string[];
+    provider: string;
+  }> {
+    const { data } = await this.client.post(
+      `/analysis/projects/${projectId}/pages/${pageId}/schema/enhance`,
+      { schema },
+      { params: { provider } }
+    );
+    return data;
+  }
 }
 
 export const api = new APIClient();

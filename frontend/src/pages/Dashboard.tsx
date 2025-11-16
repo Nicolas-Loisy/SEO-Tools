@@ -1,11 +1,20 @@
-import { useEffect, useState } from 'react';
-import { api } from '@/lib/api';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { Link } from "react-router-dom";
 import {
-  FolderKanban, Activity, FileText, TrendingUp, ArrowRight,
-  AlertCircle, Plus, PlayCircle, CheckCircle, Clock, XCircle
-} from 'lucide-react';
-import type { Quota, Project, CrawlJob } from '@/types';
+  FolderKanban,
+  Activity,
+  FileText,
+  TrendingUp,
+  ArrowRight,
+  AlertCircle,
+  Plus,
+  PlayCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+} from "lucide-react";
+import type { Quota, Project, CrawlJob } from "@/types";
 
 export default function Dashboard() {
   const [quota, setQuota] = useState<Quota | null>(null);
@@ -17,15 +26,13 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
 
-    // Auto-refresh every 10 seconds if there are active crawls
+    // Auto-refresh every 30 seconds to check for updates
     const interval = setInterval(() => {
-      if (recentCrawls.some(crawl => crawl.status === 'pending' || crawl.status === 'running')) {
-        loadData();
-      }
-    }, 10000); // 10 seconds
+      loadData();
+    }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [recentCrawls]);
+  }, []); // Empty dependencies - only run once on mount
 
   const loadData = async () => {
     try {
@@ -50,8 +57,8 @@ export default function Dashboard() {
         }
       }
     } catch (error: any) {
-      console.error('Failed to load dashboard data:', error);
-      setError(error.response?.data?.detail || 'Failed to load dashboard data');
+      console.error("Failed to load dashboard data:", error);
+      setError(error.response?.data?.detail || "Failed to load dashboard data");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +77,9 @@ export default function Dashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)]">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to load dashboard</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          Failed to load dashboard
+        </h2>
         <p className="text-gray-600 mb-4">{error}</p>
         <button onClick={loadData} className="btn btn-primary">
           Retry
@@ -89,49 +98,49 @@ export default function Dashboard() {
 
   const stats = [
     {
-      name: 'Projects',
+      name: "Projects",
       value: projects.length,
       max: quota?.max_projects || 5,
       icon: FolderKanban,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      description: 'Active projects'
+      color: "text-blue-600",
+      bgColor: "bg-blue-50",
+      description: "Active projects",
     },
     {
-      name: 'API Calls',
+      name: "API Calls",
       value: currentUsage.total_api_calls,
       max: quota?.max_api_calls_per_month || 10000,
       icon: Activity,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      description: 'This month'
+      color: "text-green-600",
+      bgColor: "bg-green-50",
+      description: "This month",
     },
     {
-      name: 'Pages Crawled',
+      name: "Pages Crawled",
       value: currentUsage.pages_crawled,
       max: quota?.max_pages_per_crawl || 1000,
       icon: FileText,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      description: 'Total pages'
+      color: "text-purple-600",
+      bgColor: "bg-purple-50",
+      description: "Total pages",
     },
     {
-      name: 'Crawl Jobs',
+      name: "Crawl Jobs",
       value: currentUsage.crawl_jobs,
       icon: TrendingUp,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-      description: 'This month'
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      description: "This month",
     },
   ];
 
   const getCrawlStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'running':
+      case "running":
         return <PlayCircle className="w-5 h-5 text-blue-500 animate-pulse" />;
-      case 'failed':
+      case "failed":
         return <XCircle className="w-5 h-5 text-red-500" />;
       default:
         return <Clock className="w-5 h-5 text-gray-400" />;
@@ -157,7 +166,10 @@ export default function Dashboard() {
             Welcome back! Here's an overview of your SEO projects.
           </p>
         </div>
-        <Link to="/projects" className="btn btn-primary">
+        <Link
+          to="/projects"
+          className="btn btn-primary inline-flex items-center"
+        >
           <Plus className="w-4 h-4 mr-2" />
           New Project
         </Link>
@@ -165,28 +177,39 @@ export default function Dashboard() {
 
       {/* Quota Warning */}
       {quota && usagePercent > 80 && (
-        <div className={`p-4 border rounded-lg ${
-          usagePercent > 95
-            ? 'bg-red-50 border-red-200'
-            : 'bg-yellow-50 border-yellow-200'
-        }`}>
+        <div
+          className={`p-4 border rounded-lg ${
+            usagePercent > 95
+              ? "bg-red-50 border-red-200"
+              : "bg-yellow-50 border-yellow-200"
+          }`}
+        >
           <div className="flex items-start">
-            <AlertCircle className={`w-5 h-5 mt-0.5 mr-3 ${
-              usagePercent > 95 ? 'text-red-600' : 'text-yellow-600'
-            }`} />
+            <AlertCircle
+              className={`w-5 h-5 mt-0.5 mr-3 ${
+                usagePercent > 95 ? "text-red-600" : "text-yellow-600"
+              }`}
+            />
             <div>
-              <p className={`font-medium ${
-                usagePercent > 95 ? 'text-red-900' : 'text-yellow-900'
-              }`}>
-                {usagePercent > 95 ? 'Quota Limit Reached' : 'Approaching Quota Limit'}
-              </p>
-              <p className={`text-sm mt-1 ${
-                usagePercent > 95 ? 'text-red-700' : 'text-yellow-700'
-              }`}>
-                You've used {Math.round(usagePercent)}% of your monthly API quota.
+              <p
+                className={`font-medium ${
+                  usagePercent > 95 ? "text-red-900" : "text-yellow-900"
+                }`}
+              >
                 {usagePercent > 95
-                  ? ' Consider upgrading your plan to continue.'
-                  : ' Consider upgrading your plan soon.'}
+                  ? "Quota Limit Reached"
+                  : "Approaching Quota Limit"}
+              </p>
+              <p
+                className={`text-sm mt-1 ${
+                  usagePercent > 95 ? "text-red-700" : "text-yellow-700"
+                }`}
+              >
+                You've used {Math.round(usagePercent)}% of your monthly API
+                quota.
+                {usagePercent > 95
+                  ? " Consider upgrading your plan to continue."
+                  : " Consider upgrading your plan soon."}
               </p>
             </div>
           </div>
@@ -196,19 +219,32 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => {
-          const percentage = stat.max ? getUsagePercentage(stat.value, stat.max) : 0;
+          const percentage = stat.max
+            ? getUsagePercentage(stat.value, stat.max)
+            : 0;
           return (
-            <div key={stat.name} className="card hover:shadow-md transition-shadow">
+            <div
+              key={stat.name}
+              className="card hover:shadow-md transition-shadow"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-600">{stat.name}</p>
+                  <p className="text-sm font-medium text-gray-600">
+                    {stat.name}
+                  </p>
                   <div className="mt-2">
-                    <span className="text-3xl font-bold text-gray-900">{stat.value.toLocaleString()}</span>
+                    <span className="text-3xl font-bold text-gray-900">
+                      {stat.value.toLocaleString()}
+                    </span>
                     {stat.max && (
-                      <span className="text-gray-500 text-sm ml-2">/ {stat.max.toLocaleString()}</span>
+                      <span className="text-gray-500 text-sm ml-2">
+                        / {stat.max.toLocaleString()}
+                      </span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">{stat.description}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {stat.description}
+                  </p>
                 </div>
                 <div className={`p-3 rounded-lg ${stat.bgColor}`}>
                   <stat.icon className={`w-6 h-6 ${stat.color}`} />
@@ -219,7 +255,11 @@ export default function Dashboard() {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className={`h-2 rounded-full transition-all ${
-                        percentage > 80 ? 'bg-red-500' : percentage > 50 ? 'bg-yellow-500' : 'bg-green-500'
+                        percentage > 80
+                          ? "bg-red-500"
+                          : percentage > 50
+                            ? "bg-yellow-500"
+                            : "bg-green-500"
                       }`}
                       style={{ width: `${percentage}%` }}
                     ></div>
@@ -236,7 +276,10 @@ export default function Dashboard() {
         <div className="card">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900">Projects</h2>
-            <Link to="/projects" className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center">
+            <Link
+              to="/projects"
+              className="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center"
+            >
               View all <ArrowRight className="w-4 h-4 ml-1" />
             </Link>
           </div>
@@ -244,11 +287,17 @@ export default function Dashboard() {
           {projects.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
               <FolderKanban className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No projects yet
+              </h3>
               <p className="text-gray-600 mb-6 max-w-sm mx-auto">
-                Create your first project to start crawling and analyzing your website.
+                Create your first project to start crawling and analyzing your
+                website.
               </p>
-              <Link to="/projects" className="btn btn-primary inline-flex items-center">
+              <Link
+                to="/projects"
+                className="btn btn-primary inline-flex items-center"
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Project
               </Link>
@@ -265,9 +314,13 @@ export default function Dashboard() {
                     <div className="flex-1">
                       <div className="flex items-center">
                         <FolderKanban className="w-5 h-5 text-gray-400 mr-2" />
-                        <h3 className="font-medium text-gray-900">{project.name}</h3>
+                        <h3 className="font-medium text-gray-900">
+                          {project.name}
+                        </h3>
                       </div>
-                      <p className="text-sm text-gray-500 mt-1 ml-7">{project.domain}</p>
+                      <p className="text-sm text-gray-500 mt-1 ml-7">
+                        {project.domain}
+                      </p>
                       <div className="flex items-center gap-4 mt-2 ml-7 text-xs text-gray-500">
                         <span>Max depth: {project.max_depth}</span>
                         <span>•</span>
@@ -295,12 +348,17 @@ export default function Dashboard() {
           {recentCrawls.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg">
               <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No crawls yet</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No crawls yet
+              </h3>
               <p className="text-gray-600 mb-6 max-w-sm mx-auto">
                 Start a crawl job to analyze your website structure and content.
               </p>
               {projects.length > 0 && (
-                <Link to={`/projects/${projects[0].id}`} className="btn btn-primary inline-flex items-center">
+                <Link
+                  to={`/projects/${projects[0].id}`}
+                  className="btn btn-primary inline-flex items-center"
+                >
                   <PlayCircle className="w-4 h-4 mr-2" />
                   Start Crawl
                 </Link>
@@ -332,7 +390,13 @@ export default function Dashboard() {
                       <>
                         <span>•</span>
                         <span>
-                          Duration: {Math.round((new Date(crawl.finished_at).getTime() - new Date(crawl.created_at).getTime()) / 1000)}s
+                          Duration:{" "}
+                          {Math.round(
+                            (new Date(crawl.finished_at).getTime() -
+                              new Date(crawl.created_at).getTime()) /
+                              1000
+                          )}
+                          s
                         </span>
                       </>
                     )}
@@ -354,7 +418,9 @@ export default function Dashboard() {
           >
             <FolderKanban className="w-10 h-10 text-primary-600 mx-auto mb-3" />
             <h3 className="font-medium text-gray-900 mb-1">Manage Projects</h3>
-            <p className="text-sm text-gray-600">Create and configure your SEO projects</p>
+            <p className="text-sm text-gray-600">
+              Create and configure your SEO projects
+            </p>
           </Link>
 
           <Link
@@ -363,7 +429,9 @@ export default function Dashboard() {
           >
             <Activity className="w-10 h-10 text-primary-600 mx-auto mb-3" />
             <h3 className="font-medium text-gray-900 mb-1">View Usage</h3>
-            <p className="text-sm text-gray-600">Monitor your quota and usage stats</p>
+            <p className="text-sm text-gray-600">
+              Monitor your quota and usage stats
+            </p>
           </Link>
 
           <div className="p-6 border-2 border-gray-200 rounded-lg text-center opacity-50 cursor-not-allowed">

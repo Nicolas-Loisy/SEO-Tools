@@ -38,6 +38,10 @@ sentence-transformers==2.3.1
 scikit-learn==1.4.0
 numpy==1.26.3
 langdetect==1.0.9
+keybert==0.8.4
+spacy==3.7.2
+networkx==3.2.1
+neo4j==5.17.0
 
 # LLM Adapters
 openai==1.10.0
