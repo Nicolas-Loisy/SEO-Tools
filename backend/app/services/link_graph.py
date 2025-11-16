@@ -60,7 +60,8 @@ class LinkGraphService:
     def build_graph(
         self,
         db: Session,
-        project_id: int
+        project_id: int,
+        max_pages: int = 1000
     ) -> nx.DiGraph:
         """
         Build a directed graph from project pages.
@@ -68,12 +69,20 @@ class LinkGraphService:
         Args:
             db: Database session
             project_id: Project ID
+            max_pages: Maximum number of pages to include (prevents timeout)
 
         Returns:
             NetworkX directed graph
         """
-        # Get all pages for the project
-        pages = db.query(Page).filter(Page.project_id == project_id).all()
+        # Get pages for the project (limited to prevent timeout)
+        # Order by seo_score to prioritize important pages
+        pages = db.query(Page).filter(
+            Page.project_id == project_id
+        ).order_by(
+            Page.seo_score.desc().nullslast()
+        ).limit(max_pages).all()
+
+        print(f"[LinkGraph] Building graph for project {project_id} with {len(pages)} pages (max: {max_pages})")
 
         # Create directed graph
         G = nx.DiGraph()
@@ -150,13 +159,25 @@ class LinkGraphService:
     def get_graph_stats(
         self,
         db: Session,
-        project_id: int
+        project_id: int,
+        max_pages: int = 1000
     ) -> GraphStats:
-        """Get comprehensive statistics about the link graph."""
-        # Build graph
-        G = self.build_graph(db, project_id)
+        """
+        Get comprehensive statistics about the link graph.
+
+        Args:
+            db: Database session
+            project_id: Project ID
+            max_pages: Maximum pages to analyze (default 1000, prevents timeout)
+        """
+        print(f"[LinkGraph] Getting graph stats for project {project_id}")
+
+        # Build graph with limit
+        G = self.build_graph(db, project_id, max_pages=max_pages)
 
         if len(G.nodes()) == 0:
+            print(f"[LinkGraph] No pages found for project {project_id}")
+
             return GraphStats(
                 total_pages=0,
                 total_links=0,
@@ -220,10 +241,19 @@ class LinkGraphService:
     def export_graph_for_visualization(
         self,
         db: Session,
-        project_id: int
+        project_id: int,
+        max_pages: int = 500
     ) -> Dict[str, Any]:
-        """Export graph data for D3.js or Cytoscape visualization."""
-        G = self.build_graph(db, project_id)
+        """
+        Export graph data for D3.js or Cytoscape visualization.
+
+        Args:
+            db: Database session
+            project_id: Project ID
+            max_pages: Maximum pages for visualization (default 500, smaller for performance)
+        """
+        print(f"[LinkGraph] Exporting graph visualization for project {project_id}")
+        G = self.build_graph(db, project_id, max_pages=max_pages)
         pagerank = self.calculate_pagerank(G)
 
         nodes = []

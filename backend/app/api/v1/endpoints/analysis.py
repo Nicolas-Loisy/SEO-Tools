@@ -326,6 +326,7 @@ async def get_link_recommendations_for_project(
 @router.get("/projects/{project_id}/link-graph")
 async def get_link_graph_analysis(
     project_id: int,
+    max_pages: int = 1000,
     tenant: Tenant = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -336,6 +337,7 @@ async def get_link_graph_analysis(
 
     Args:
         project_id: Project ID
+        max_pages: Maximum number of pages to analyze (default 1000, prevents timeout)
         tenant: Current tenant
         db: Database session
 
@@ -344,6 +346,8 @@ async def get_link_graph_analysis(
     """
     from app.services.link_graph import link_graph_service
     from app.core.database import SessionLocal
+
+    print(f"[API link-graph] Request for project {project_id}, max_pages={max_pages}")
 
     # Verify project belongs to tenant
     project_repo = ProjectRepository(db)
@@ -359,7 +363,7 @@ async def get_link_graph_analysis(
     sync_db = SessionLocal()
 
     try:
-        stats = link_graph_service.get_graph_stats(sync_db, project_id)
+        stats = link_graph_service.get_graph_stats(sync_db, project_id, max_pages=max_pages)
 
         return {
             "project_id": project_id,
@@ -399,6 +403,7 @@ async def get_link_graph_analysis(
 @router.get("/projects/{project_id}/link-graph/export")
 async def export_link_graph_visualization(
     project_id: int,
+    max_pages: int = 500,
     tenant: Tenant = Depends(get_current_tenant),
     db: AsyncSession = Depends(get_db),
 ) -> Dict[str, Any]:
@@ -407,6 +412,7 @@ async def export_link_graph_visualization(
 
     Args:
         project_id: Project ID
+        max_pages: Maximum pages for visualization (default 500, smaller for performance)
         tenant: Current tenant
         db: Database session
 
@@ -415,6 +421,8 @@ async def export_link_graph_visualization(
     """
     from app.services.link_graph import link_graph_service
     from app.core.database import SessionLocal
+
+    print(f"[API link-graph/export] Request for project {project_id}, max_pages={max_pages}")
 
     # Verify project belongs to tenant
     project_repo = ProjectRepository(db)
@@ -432,7 +440,8 @@ async def export_link_graph_visualization(
     try:
         graph_data = link_graph_service.export_graph_for_visualization(
             sync_db,
-            project_id
+            project_id,
+            max_pages=max_pages
         )
 
         return {
