@@ -37,7 +37,8 @@ class LinkRecommender:
         db: Session,
         page_id: int,
         project_id: int,
-        max_suggestions: int = 20
+        max_suggestions: int = 20,
+        max_target_pages: int = 500
     ) -> List[LinkSuggestion]:
         """
         Get link recommendations for a specific page.
@@ -47,6 +48,7 @@ class LinkRecommender:
             page_id: Source page ID
             project_id: Project ID
             max_suggestions: Maximum number of suggestions to return
+            max_target_pages: Maximum target pages to consider (prevents timeout)
 
         Returns:
             List of link suggestions
@@ -56,20 +58,27 @@ class LinkRecommender:
         if not source_page or not source_page.text_content:
             return []
 
+        print(f"[LinkRecommender] Getting recommendations for page {page_id}, max_targets={max_target_pages}")
+
         # Extract keywords from source page
         keywords = keyword_extractor.extract_keywords(
             source_page.text_content,
             top_n=30
         )
 
-        # Get all pages in the same project (potential targets)
+        # Get pages in the same project (potential targets)
+        # OPTIMIZATION: Limit to prevent timeout, prioritize by SEO score
         target_pages = db.query(Page).filter(
             and_(
                 Page.project_id == project_id,
                 Page.id != page_id,
                 Page.text_content.isnot(None)
             )
-        ).all()
+        ).order_by(
+            Page.seo_score.desc().nullslast()
+        ).limit(max_target_pages).all()
+
+        print(f"[LinkRecommender] Found {len(target_pages)} target pages (max: {max_target_pages})")
 
         suggestions = []
 

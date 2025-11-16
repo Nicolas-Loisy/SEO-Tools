@@ -258,11 +258,14 @@ async def get_link_recommendations_for_project(
     try:
         if page_id:
             # Get recommendations for specific page
+            print(f"[API link-recommendations] Getting recommendations for page {page_id}")
+
             recommendations = link_recommender.get_recommendations(
                 sync_db,
                 page_id,
                 project_id,
-                max_suggestions=limit
+                max_suggestions=limit,
+                max_target_pages=500  # Limit target pages to prevent timeout
             )
 
             return {
@@ -283,22 +286,32 @@ async def get_link_recommendations_for_project(
                 "count": len(recommendations)
             }
         else:
-            # Get recommendations for all pages (limited)
-            # Get first 10 pages and generate recommendations
+            # Get recommendations for all pages (very limited to prevent timeout)
+            print(f"[API link-recommendations] Getting recommendations for all pages (limited)")
+
+            # OPTIMIZATION: Only process top 5 pages by SEO score (was 10)
             result = await db.execute(
-                select(Page).filter(Page.project_id == project_id).limit(10)
+                select(Page).filter(
+                    Page.project_id == project_id
+                ).order_by(
+                    Page.seo_score.desc().nullslast()
+                ).limit(5)  # Reduced from 10 to 5
             )
             pages = result.scalars().all()
 
+            print(f"[API link-recommendations] Processing {len(pages)} pages")
+
             all_recommendations = []
             for page in pages:
+                # OPTIMIZATION: Reduce max_suggestions and max_target_pages
                 recs = link_recommender.get_recommendations(
                     sync_db,
                     page.id,
                     project_id,
-                    max_suggestions=5
+                    max_suggestions=3,  # Reduced from 5
+                    max_target_pages=200  # Much smaller for "all pages" mode
                 )
-                for rec in recs[:3]:  # Top 3 per page
+                for rec in recs[:2]:  # Top 2 per page (was 3)
                     all_recommendations.append({
                         "source_page_id": rec.source_page_id,
                         "source_url": rec.source_url,
@@ -313,6 +326,8 @@ async def get_link_recommendations_for_project(
 
             # Sort by score
             all_recommendations.sort(key=lambda x: x['score'], reverse=True)
+
+            print(f"[API link-recommendations] Returning {len(all_recommendations[:limit])} recommendations")
 
             return {
                 "project_id": project_id,
