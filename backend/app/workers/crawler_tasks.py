@@ -172,6 +172,10 @@ def crawl_site(job_id: int) -> dict:
 
         from app.models.page import Link
 
+        # Track links already added in this session to avoid duplicates
+        # A page can have multiple <a> tags pointing to the same URL
+        links_in_session = set()
+
         for crawled_page in crawl_result.pages:
             # Get source page ID
             source_page_id = url_to_page_id.get(crawled_page.url)
@@ -192,7 +196,14 @@ def crawl_site(job_id: int) -> dict:
                     links_skipped += 1
                     continue
 
-                # Check if link already exists
+                # Create unique key for this link
+                link_key = (source_page_id, target_page_id)
+
+                # Skip if we already processed this link in this session
+                if link_key in links_in_session:
+                    continue
+
+                # Check if link already exists in database
                 existing_link = db.query(Link).filter(
                     Link.source_page_id == source_page_id,
                     Link.target_page_id == target_page_id
@@ -214,6 +225,7 @@ def crawl_site(job_id: int) -> dict:
                 )
 
                 db.add(link)
+                links_in_session.add(link_key)
                 links_created += 1
 
         db.commit()
