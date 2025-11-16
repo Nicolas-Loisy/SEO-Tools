@@ -494,9 +494,6 @@ class APIClient {
     });
     return data;
   }
-}
-
-export const api = new APIClient();
 
   // SEO Content Generation
   async generateSEOContent(params: {
