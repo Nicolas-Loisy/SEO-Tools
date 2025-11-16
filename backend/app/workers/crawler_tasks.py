@@ -178,8 +178,12 @@ def crawl_site(job_id: int) -> dict:
             if not source_page_id:
                 continue
 
-            # Create links to each outgoing URL
-            for target_url in crawled_page.outgoing_links:
+            # Create links to each outgoing URL with anchor text
+            for link_data in crawled_page.outgoing_links:
+                # Extract URL and anchor text from dict
+                target_url = link_data.get("url")
+                anchor_text = link_data.get("anchor_text")
+
                 # Get target page ID
                 target_page_id = url_to_page_id.get(target_url)
 
@@ -195,15 +199,17 @@ def crawl_site(job_id: int) -> dict:
                 ).first()
 
                 if existing_link:
-                    # Link already exists, skip
+                    # Link already exists, update anchor text if provided
+                    if anchor_text and not existing_link.anchor_text:
+                        existing_link.anchor_text = anchor_text
                     continue
 
-                # Create new Link object
+                # Create new Link object with anchor text
                 link = Link(
                     source_page_id=source_page_id,
                     target_page_id=target_page_id,
-                    anchor_text=None,  # Could be extracted from HTML later
-                    rel=None,
+                    anchor_text=anchor_text,  # Now extracted from HTML!
+                    rel=None,  # TODO: Extract rel attribute
                     is_internal=True  # These are internal links from crawler
                 )
 

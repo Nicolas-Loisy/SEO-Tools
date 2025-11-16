@@ -26,7 +26,7 @@ class CrawledPage:
     canonical_url: str | None
     hreflang: Dict[str, str] | None
     depth: int
-    outgoing_links: List[str]
+    outgoing_links: List[Dict[str, str]]  # Changed from List[str] to include anchor text: [{"url": "...", "anchor_text": "..."}]
 
 
 @dataclass

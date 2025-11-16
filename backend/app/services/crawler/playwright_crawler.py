@@ -351,7 +351,7 @@ class PlaywrightCrawler(BaseCrawler):
             else None
         )
 
-        # Extract outgoing links
+        # Extract outgoing links with anchor text
         outgoing_links = []
         base_domain = urlparse(url).netloc
 
@@ -365,7 +365,12 @@ class PlaywrightCrawler(BaseCrawler):
 
             # Only internal links
             if parsed.netloc == base_domain:
-                outgoing_links.append(absolute_url)
+                # Extract anchor text (strip whitespace and newlines)
+                anchor_text = link.get_text(strip=True)
+                outgoing_links.append({
+                    "url": absolute_url,
+                    "anchor_text": anchor_text if anchor_text else None
+                })
 
         # Generate hashes
         url_hash = hashlib.sha256(url.encode()).hexdigest()

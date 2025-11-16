@@ -160,9 +160,45 @@ Links are extracted during the crawling process:
 **Link Attributes:**
 - `source_page_id`: Page containing the link
 - `target_page_id`: Page being linked to
-- `anchor_text`: Not extracted yet (TODO: parse from HTML)
+- `anchor_text`: ✅ **EXTRACTED** - Text content of the `<a>` tag
 - `is_internal`: Always true (crawler only tracks internal links)
-- `rel`: Not extracted yet (TODO: parse from HTML)
+- `rel`: Not extracted yet (TODO: parse rel attribute like "nofollow")
+
+### Anchor Text Extraction
+
+**ENHANCEMENT:** Anchor text is now extracted from HTML links during crawl!
+
+**Implementation:**
+```python
+# In crawlers (fast_crawler.py, playwright_crawler.py)
+for link in soup.find_all("a", href=True):
+    href = link.get("href")
+    anchor_text = link.get_text(strip=True)  # Extract text content
+
+    outgoing_links.append({
+        "url": absolute_url,
+        "anchor_text": anchor_text if anchor_text else None
+    })
+```
+
+**Benefits:**
+- ✅ Analyze anchor text distribution across the site
+- ✅ Identify over-optimization (same anchor text repeated)
+- ✅ Detect generic anchors ("click here", "read more")
+- ✅ Future: Suggest better anchor text for SEO
+- ✅ Future: Analyze keyword usage in anchors
+
+**Examples:**
+```html
+<a href="/page2">Learn more about SEO</a>
+→ anchor_text: "Learn more about SEO"
+
+<a href="/contact">Contact Us</a>
+→ anchor_text: "Contact Us"
+
+<a href="/blog"></a>  <!-- Empty link -->
+→ anchor_text: None
+```
 
 ### Logging
 
