@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, FolderKanban, Search, BarChart3, LogOut } from 'lucide-react';
+import { Home, FolderKanban, Search, BarChart3, LogOut, TreePine } from 'lucide-react';
 import { api } from '@/lib/api';
 
 interface LayoutProps {
@@ -18,6 +18,7 @@ export default function Layout({ children, onLogout }: LayoutProps) {
   const navigation = [
     { name: 'Dashboard', href: '/', icon: Home },
     { name: 'Projects', href: '/projects', icon: FolderKanban },
+    { name: 'Site Architecture', href: '/site-architecture', icon: TreePine },
     { name: 'Search', href: '/search', icon: Search },
     { name: 'Usage', href: '/usage', icon: BarChart3 },
   ];
