@@ -227,7 +227,7 @@ class ArchitectureGenerator:
 
             clusters.append(
                 ClusterResult(
-                    cluster_id=cluster_id,
+                    cluster_id=int(cluster_id),  # Convert numpy.int to Python int for JSON serialization
                     keywords=cluster_keywords,
                     centroid_keyword=centroid_keyword,
                 )
