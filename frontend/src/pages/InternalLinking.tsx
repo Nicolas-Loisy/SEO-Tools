@@ -60,13 +60,7 @@ export default function InternalLinking() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/v1/analysis/projects/${projectId}/anchor-text-analysis`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      if (!response.ok) throw new Error('Failed to load anchor analysis');
-      const data = await response.json();
+      const data = await api.getAnchorTextAnalysis(projectId);
       setAnchorAnalysis(data);
     } catch (err: any) {
       setError(err.message || 'Failed to load anchor text analysis');
