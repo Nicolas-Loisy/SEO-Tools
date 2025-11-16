@@ -291,15 +291,18 @@ export default function InternalLinking() {
                         {/* Target Page */}
                         <div className="mb-3">
                           <span className="text-xs font-medium text-gray-500">Link to:</span>
-                          <a
-                            href={rec.target_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-base font-medium text-primary-600 hover:text-primary-700 ml-2 inline-flex items-center gap-1"
-                          >
-                            {rec.target_title}
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
+                          <div className="ml-2">
+                            <a
+                              href={rec.target_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-base font-medium text-primary-600 hover:text-primary-700 inline-flex items-center gap-1"
+                            >
+                              {rec.target_title}
+                              <ExternalLink className="w-4 h-4" />
+                            </a>
+                            <div className="text-xs text-gray-500 mt-1">{rec.target_url}</div>
+                          </div>
                         </div>
 
                         {/* Keyword */}
