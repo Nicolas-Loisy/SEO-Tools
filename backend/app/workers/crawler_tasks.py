@@ -150,10 +150,68 @@ def crawl_site(job_id: int) -> dict:
 
             db.flush()
 
-            # Save links
+            # Track outgoing links for later processing
             total_links += len(crawled_page.outgoing_links)
 
+        # Commit all pages first
         db.commit()
+
+        # Now create Link objects - we need all pages to exist first
+        print(f"[CrawlerTask] Creating {total_links} link relationships...")
+
+        # Create URL to page_id mapping
+        url_to_page_id = {
+            p.url: p.id for p in db.query(Page).filter(
+                Page.project_id == project.id,
+                Page.crawl_job_id == job.id
+            ).all()
+        }
+
+        links_created = 0
+        links_skipped = 0
+
+        from app.models.page import Link
+
+        for crawled_page in crawl_result.pages:
+            # Get source page ID
+            source_page_id = url_to_page_id.get(crawled_page.url)
+            if not source_page_id:
+                continue
+
+            # Create links to each outgoing URL
+            for target_url in crawled_page.outgoing_links:
+                # Get target page ID
+                target_page_id = url_to_page_id.get(target_url)
+
+                if not target_page_id:
+                    # Target page not in this crawl (external or not crawled yet)
+                    links_skipped += 1
+                    continue
+
+                # Check if link already exists
+                existing_link = db.query(Link).filter(
+                    Link.source_page_id == source_page_id,
+                    Link.target_page_id == target_page_id
+                ).first()
+
+                if existing_link:
+                    # Link already exists, skip
+                    continue
+
+                # Create new Link object
+                link = Link(
+                    source_page_id=source_page_id,
+                    target_page_id=target_page_id,
+                    anchor_text=None,  # Could be extracted from HTML later
+                    rel=None,
+                    is_internal=True  # These are internal links from crawler
+                )
+
+                db.add(link)
+                links_created += 1
+
+        db.commit()
+        print(f"[CrawlerTask] Created {links_created} links, skipped {links_skipped} (targets not found)")
 
         # Index pages to Meilisearch for full-text search
         try:

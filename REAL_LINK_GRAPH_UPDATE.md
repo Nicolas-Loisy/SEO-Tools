@@ -1,6 +1,8 @@
 # Real Link Graph Implementation
 
-## Problem
+## Problems Fixed
+
+### Problem 1: Synthetic Link Graph (FIXED)
 
 Previously, the link graph was **synthetic** - it created artificial links based on page depth:
 - Pages at depth N linked to pages at depth N+1
@@ -11,6 +13,22 @@ This resulted in:
 - ❌ Inaccurate PageRank calculations
 - ❌ Wrong hub/authority page detection
 - ❌ Misleading graph analysis metrics
+
+### Problem 2: Links Not Saved to Database (FIXED)
+
+**Critical bug discovered:** Links were extracted by the crawler but **never saved** to the `links` table!
+
+**Evidence:**
+- Line 153-154 in `crawler_tasks.py` had comment `# Save links`
+- Code only counted links: `total_links += len(crawled_page.outgoing_links)`
+- **No code to create Link objects**
+- Result: `links` table was always empty
+- Graph analysis showed 0 in/out links for all pages
+
+**Impact:**
+- Even with real link graph code, it found 0 links
+- User reported: "Homepage has a link but shows 0 in/out"
+- All internal linking analysis was broken
 
 ## Solution
 
@@ -121,14 +139,43 @@ Links are extracted during the crawling process:
 
 **File:** `backend/app/workers/crawler_tasks.py`
 
-When a page is crawled:
-1. HTML is parsed for `<a>` tags
-2. Internal links (same domain) are identified
-3. `Link` records are created with:
-   - `source_page_id`: Current page
-   - `target_page_id`: Linked page
-   - `anchor_text`: Text inside `<a>` tag
-   - `is_internal`: True for same-domain links
+### Two-Phase Link Creation
+
+**Phase 1: Save Pages**
+1. Crawl pages and extract `outgoing_links` (list of URLs)
+2. Save all pages to database
+3. Commit to get page IDs
+
+**Phase 2: Create Links**
+1. Create URL → page_id mapping
+2. For each crawled page:
+   - Get source_page_id from URL
+   - For each outgoing link URL:
+     - Get target_page_id from URL
+     - Create Link record if both pages exist
+3. Skip links where target page wasn't crawled
+4. Avoid duplicates by checking existing links
+5. Commit all links
+
+**Link Attributes:**
+- `source_page_id`: Page containing the link
+- `target_page_id`: Page being linked to
+- `anchor_text`: Not extracted yet (TODO: parse from HTML)
+- `is_internal`: Always true (crawler only tracks internal links)
+- `rel`: Not extracted yet (TODO: parse from HTML)
+
+### Logging
+
+The crawler now logs link creation:
+```
+[CrawlerTask] Creating 3421 link relationships...
+[CrawlerTask] Created 3200 links, skipped 221 (targets not found)
+```
+
+Skipped links are URLs that:
+- Point to external sites (outside crawl scope)
+- Point to pages that failed to crawl
+- Point to pages beyond max_pages limit
 
 ## Performance
 
