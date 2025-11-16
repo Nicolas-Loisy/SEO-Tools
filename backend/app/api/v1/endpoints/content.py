@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 from app.core.database import get_db
 from app.models.page import Page
@@ -277,8 +277,8 @@ class GenerateContentRequest(BaseModel):
     tone: str = Field("professional", description="Content tone")
     length: int = Field(1000, ge=300, le=5000, description="Target word count")
     language: str = Field("en", description="Content language")
-    context: str = Field(None, description="Additional context")
-    competitor_urls: List[str] = Field(None, description="Competitor URLs for analysis")
+    context: Optional[str] = Field(None, description="Additional context")
+    competitor_urls: Optional[List[str]] = Field(None, description="Competitor URLs for analysis")
     provider: str = Field("openai", description="LLM provider")
 
 
@@ -295,8 +295,8 @@ class ValidateContentRequest(BaseModel):
     """Request to validate content."""
     content: str = Field(..., description="Content to validate")
     keyword: str = Field(..., description="Target keyword")
-    meta_title: str = Field(None, description="Meta title")
-    meta_description: str = Field(None, description="Meta description")
+    meta_title: Optional[str] = Field(None, description="Meta title")
+    meta_description: Optional[str] = Field(None, description="Meta description")
     min_words: int = Field(300, description="Minimum word count")
     max_words: int = Field(2500, description="Maximum word count")
 
