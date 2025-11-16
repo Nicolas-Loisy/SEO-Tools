@@ -270,3 +270,7 @@ class LLMAdapter:
         embedding = response.data[0].embedding
 
         return embedding
+
+
+# Singleton instance
+llm_adapter = LLMAdapter()
